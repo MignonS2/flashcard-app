@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Local Streamlit config
+.streamlit/secrets.toml
+
+# User uploaded images
+images/
+
+# JSON data
+*.json
+
+# OS specific
+.DS_Store
+Thumbs.db 
