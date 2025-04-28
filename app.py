@@ -1296,21 +1296,51 @@ def study_mode(domain):
         st.session_state.study_show_keyword = True
         st.session_state.study_show_rhyming = True
     
-    # 카드 섞기 버튼 - 퀴즈 모드와 동일한 패턴으로 구현
-    if st.button("카드 섞기", key="study_shuffle_button"):
-        shuffled_cards = all_cards.copy()
-        random.shuffle(shuffled_cards)
-        
-        # 세션 상태 업데이트
-        st.session_state.study_cards = shuffled_cards
-        st.session_state.current_card_index = 0
-        # 카드 섞기 후에도 보기 상태 유지
-        st.session_state.study_show_content = True
-        st.session_state.study_show_keyword = True
-        st.session_state.study_show_rhyming = True
-        
-        st.success("카드가 섞였습니다!")
-        st.rerun()
+    # 네비게이션 및 컨트롤 버튼
+    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+    
+    with nav_col1:
+        if st.button("이전", key="prev_card"):
+            st.session_state.current_card_index = (st.session_state.current_card_index - 1) % len(st.session_state.study_cards)
+            # 이전 카드로 이동해도 보기 상태 유지
+            st.rerun()
+    
+    with nav_col2:
+        if st.button("모두 가리기", key="hide_all"):
+            st.session_state.study_show_content = False
+            st.session_state.study_show_keyword = False
+            st.session_state.study_show_rhyming = False
+            st.rerun()
+    
+    with nav_col3:
+        if st.button("모두 보기", key="show_all"):
+            st.session_state.study_show_content = True
+            st.session_state.study_show_keyword = True
+            st.session_state.study_show_rhyming = True
+            st.rerun()
+    
+    with nav_col4:
+        if st.button("다음", key="next_card"):
+            st.session_state.current_card_index = (st.session_state.current_card_index + 1) % len(st.session_state.study_cards)
+            # 다음 카드로 이동해도 보기 상태 유지
+            st.rerun()
+            
+    with nav_col5:
+        # 카드 섞기 버튼
+        if st.button("카드 섞기", key="study_shuffle_button"):
+            shuffled_cards = all_cards.copy()
+            random.shuffle(shuffled_cards)
+            
+            # 세션 상태 업데이트
+            st.session_state.study_cards = shuffled_cards
+            st.session_state.current_card_index = 0
+            # 카드 섞기 후에도 보기 상태 유지
+            st.session_state.study_show_content = True
+            st.session_state.study_show_keyword = True
+            st.session_state.study_show_rhyming = True
+            
+            st.success("카드가 섞였습니다!")
+            st.rerun()
     
     # 플래시카드 보여주기
     if st.session_state.study_cards:
@@ -1341,8 +1371,12 @@ def study_mode(domain):
                 st.rerun()
                 
             if st.session_state.study_show_keyword:
-                st.markdown("### 핵심키워드")
-                st.markdown(current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.'))
+                st.markdown(f"""
+                <div class="card">
+                    <h3>핵심키워드</h3>
+                    <p>{current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}</p>
+                </div>
+                """, unsafe_allow_html=True)
             
             # 두음 표시 - 버튼 텍스트 변경
             rhyming_button_text = "두음 가리기" if st.session_state.study_show_rhyming else "두음 보기"
@@ -1351,8 +1385,12 @@ def study_mode(domain):
                 st.rerun()
                 
             if st.session_state.study_show_rhyming:
-                st.markdown("### 두음")
-                st.markdown(current_card['card_data'].get('rhyming', '두음 정보가 없습니다.'))
+                st.markdown(f"""
+                <div class="card">
+                    <h3>두음</h3>
+                    <p>{current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
             # 내용 표시 - 버튼 텍스트 변경
             content_button_text = "내용 가리기" if st.session_state.study_show_content else "내용 보기"
@@ -1361,8 +1399,12 @@ def study_mode(domain):
                 st.rerun()
                 
             if st.session_state.study_show_content:
-                st.markdown("### 내용")
-                st.markdown(current_card['card_data']['content'])
+                st.markdown(f"""
+                <div class="card">
+                    <h3>내용</h3>
+                    <p>{current_card['card_data']['content']}</p>
+                </div>
+                """, unsafe_allow_html=True)
         
         with image_col:
             # 이미지 표시 (정의/개념을 기준으로 이미지 경로 구성)
@@ -1372,35 +1414,6 @@ def study_mode(domain):
                 display_image(domain, current_card['topic'], term)
             else:
                 st.info("이 카드에는 이미지가 없습니다.")
-        
-        # 버튼 행 - 모두 보기 버튼 추가
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            if st.button("이전", key="prev_card"):
-                st.session_state.current_card_index = (st.session_state.current_card_index - 1) % len(st.session_state.study_cards)
-                # 이전 카드로 이동해도 보기 상태 유지
-                st.rerun()
-        
-        with col2:
-            if st.button("모두 가리기", key="hide_all"):
-                st.session_state.study_show_content = False
-                st.session_state.study_show_keyword = False
-                st.session_state.study_show_rhyming = False
-                st.rerun()
-        
-        with col3:
-            if st.button("모두 보기", key="show_all"):
-                st.session_state.study_show_content = True
-                st.session_state.study_show_keyword = True
-                st.session_state.study_show_rhyming = True
-                st.rerun()
-        
-        with col4:
-            if st.button("다음", key="next_card"):
-                st.session_state.current_card_index = (st.session_state.current_card_index + 1) % len(st.session_state.study_cards)
-                # 다음 카드로 이동해도 보기 상태 유지
-                st.rerun()
 
 # 전체 도메인 학습 모드
 def all_domains_study_mode():
@@ -1462,6 +1475,54 @@ def all_domains_study_mode():
         st.session_state.all_study_show_keyword = True
         st.session_state.all_study_show_rhyming = True
     
+    # 네비게이션 및 컨트롤 버튼
+    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+    
+    with nav_col1:
+        prev_btn = st.button("이전", key="all_prev_card")
+        if prev_btn:
+            st.session_state.all_current_card_index = (st.session_state.all_current_card_index - 1) % len(st.session_state.all_study_cards)
+            # 이전 카드로 이동해도 보기 상태는 유지
+            st.rerun()
+    
+    with nav_col2:
+        hide_btn = st.button("모두 가리기", key="all_hide_all")
+        if hide_btn:
+            st.session_state.all_study_show_content = False
+            st.session_state.all_study_show_keyword = False
+            st.session_state.all_study_show_rhyming = False
+            st.rerun()
+    
+    with nav_col3:
+        show_btn = st.button("모두 보기", key="all_show_all")
+        if show_btn:
+            st.session_state.all_study_show_content = True
+            st.session_state.all_study_show_keyword = True
+            st.session_state.all_study_show_rhyming = True
+            st.rerun()
+    
+    with nav_col4:
+        next_btn = st.button("다음", key="all_next_card")
+        if next_btn:
+            st.session_state.all_current_card_index = (st.session_state.all_current_card_index + 1) % len(st.session_state.all_study_cards)
+            # 다음 카드로 이동해도 보기 상태는 유지
+            st.rerun()
+    
+    with nav_col5:
+        # 셔플 버튼
+        shuffle_btn = st.button("카드 섞기", key="all_shuffle_cards")
+        if shuffle_btn:
+            shuffled_cards = st.session_state.all_study_cards.copy()
+            random.shuffle(shuffled_cards)
+            st.session_state.all_study_cards = shuffled_cards
+            st.session_state.all_current_card_index = 0
+            # 카드 섞기 후에도 보기 상태는 유지
+            st.session_state.all_study_show_content = True
+            st.session_state.all_study_show_keyword = True
+            st.session_state.all_study_show_rhyming = True
+            st.success("카드가 섞였습니다!")
+            st.rerun()
+    
     # 플래시카드 보여주기
     if st.session_state.all_study_cards:
         current_card = st.session_state.all_study_cards[st.session_state.all_current_card_index]
@@ -1497,8 +1558,12 @@ def all_domains_study_mode():
                 st.rerun()
                 
             if st.session_state.all_study_show_keyword:
-                st.markdown("### 핵심키워드")
-                st.markdown(current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.'))
+                st.markdown(f"""
+                <div class="card">
+                    <h3>핵심키워드</h3>
+                    <p>{current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}</p>
+                </div>
+                """, unsafe_allow_html=True)
             
             # 두음 표시 - 버튼 텍스트 변경
             rhyming_button_text = "두음 가리기" if st.session_state.all_study_show_rhyming else "두음 보기"
@@ -1508,8 +1573,12 @@ def all_domains_study_mode():
                 st.rerun()
                 
             if st.session_state.all_study_show_rhyming:
-                st.markdown("### 두음")
-                st.markdown(current_card['card_data'].get('rhyming', '두음 정보가 없습니다.'))
+                st.markdown(f"""
+                <div class="card">
+                    <h3>두음</h3>
+                    <p>{current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}</p>
+                </div>
+                """, unsafe_allow_html=True)
             
             # 내용 표시 - 버튼 텍스트 변경
             content_button_text = "내용 가리기" if st.session_state.all_study_show_content else "내용 보기"
@@ -1519,8 +1588,12 @@ def all_domains_study_mode():
                 st.rerun()
                 
             if st.session_state.all_study_show_content:
-                st.markdown("### 내용")
-                st.markdown(current_card['card_data']['content'])
+                st.markdown(f"""
+                <div class="card">
+                    <h3>내용</h3>
+                    <p>{current_card['card_data']['content']}</p>
+                </div>
+                """, unsafe_allow_html=True)
         
         with image_col:
             # 이미지 표시
@@ -1532,53 +1605,6 @@ def all_domains_study_mode():
                 display_image(domain, topic, term)
             else:
                 st.info("이 카드에는 이미지가 없습니다.")
-        
-        # 버튼 행 - 모두 보기 버튼 추가
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            prev_btn = st.button("이전", key="all_prev_card")
-            if prev_btn:
-                st.session_state.all_current_card_index = (st.session_state.all_current_card_index - 1) % len(st.session_state.all_study_cards)
-                # 이전 카드로 이동해도 보기 상태는 유지
-                st.rerun()
-        
-        with col2:
-            hide_btn = st.button("모두 가리기", key="all_hide_all")
-            if hide_btn:
-                st.session_state.all_study_show_content = False
-                st.session_state.all_study_show_keyword = False
-                st.session_state.all_study_show_rhyming = False
-                st.rerun()
-        
-        with col3:
-            show_btn = st.button("모두 보기", key="all_show_all")
-            if show_btn:
-                st.session_state.all_study_show_content = True
-                st.session_state.all_study_show_keyword = True
-                st.session_state.all_study_show_rhyming = True
-                st.rerun()
-        
-        with col4:
-            next_btn = st.button("다음", key="all_next_card")
-            if next_btn:
-                st.session_state.all_current_card_index = (st.session_state.all_current_card_index + 1) % len(st.session_state.all_study_cards)
-                # 다음 카드로 이동해도 보기 상태는 유지
-                st.rerun()
-        
-        # 셔플 버튼
-        shuffle_btn = st.button("카드 섞기", key="all_shuffle_cards")
-        if shuffle_btn:
-            shuffled_cards = st.session_state.all_study_cards.copy()
-            random.shuffle(shuffled_cards)
-            st.session_state.all_study_cards = shuffled_cards
-            st.session_state.all_current_card_index = 0
-            # 카드 섞기 후에도 보기 상태는 유지
-            st.session_state.all_study_show_content = True
-            st.session_state.all_study_show_keyword = True
-            st.session_state.all_study_show_rhyming = True
-            st.success("카드가 섞였습니다!")
-            st.rerun()
 
 # 전체 도메인 퀴즈 모드
 def all_domains_quiz_mode():
