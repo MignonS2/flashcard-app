@@ -1520,7 +1520,7 @@ def manage_flashcards(domain):
                     image_bytes = img.getvalue()
                     image = Image.open(io.BytesIO(image_bytes))
                     # 변환된 이미지를 표시
-                    st.image(image, caption=f"업로드된 이미지: {img.name}", use_container_width=True)
+                    st.image(image, caption=f"업로드된 이미지: {img.name}")
                 except Exception as e:
                     st.error(f"이미지 표시 중 오류 발생: {str(e)}")
         
@@ -1656,7 +1656,7 @@ def manage_flashcards(domain):
                                         image_bytes = img.getvalue()
                                         image = Image.open(io.BytesIO(image_bytes))
                                         # 변환된 이미지를 표시
-                                        st.image(image, caption=f"업로드할 이미지: {img.name}", use_container_width=True)
+                                        st.image(image, caption=f"업로드할 이미지: {img.name}")
                                     except Exception as e:
                                         st.error(f"이미지 표시 중 오류 발생: {str(e)}")
                                 
@@ -1688,7 +1688,7 @@ def manage_flashcards(domain):
                                         image_bytes = img.getvalue()
                                         image = Image.open(io.BytesIO(image_bytes))
                                         # 변환된 이미지를 표시
-                                        st.image(image, caption=f"추가할 이미지: {img.name}", use_container_width=True)
+                                        st.image(image, caption=f"추가할 이미지: {img.name}")
                                     except Exception as e:
                                         st.error(f"이미지 표시 중 오류 발생: {str(e)}")
                                 
