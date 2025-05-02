@@ -918,6 +918,8 @@ def set_page_style():
         border: none !important;
         padding: 12px 15px;
         transition: all 0.2s ease;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
     }
     
     .streamlit-expanderHeader:hover {
@@ -2853,6 +2855,16 @@ def all_domains_topic_list():
     
     # 전체 도메인:토픽 목록 표시
     st.subheader(f"전체 플래시카드 목록 ({len(all_domain_topics)}개)")
+    
+    # expander 스타일을 추가하여 텍스트 잘림 방지
+    st.markdown("""
+    <style>
+    .streamlit-expanderHeader {
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     # 도메인:토픽 리스트와 카드 개수 표시
     for idx, item in enumerate(all_domain_topics):

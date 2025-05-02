@@ -1,5 +1,14 @@
 {
-  "SW공학": {},
+  "SW공학": {
+    "Observer Pattern": {
+      "객체의 변화를 자동 감지 하여 대응하는 느슨한 결합의 디자인 패턴": {
+        "subject": "객체의 변화를 자동 감지 하여 대응하는 느슨한 결합의 디자인 패턴",
+        "keyword": "변화감지 자동대응 디자인패턴 / 느슨한 결합, Pub/Sub, 일대다 구성",
+        "rhyming": "",
+        "content": "Subject, ConCrete Subject, Observer, Concrete Observer"
+      }
+    }
+  },
   "SW테스트": {},
   "IT경영/전력": {},
   "DB": {},
