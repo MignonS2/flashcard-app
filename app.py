@@ -13,6 +13,7 @@ import uuid
 import pandas as pd
 import numpy as np
 import random
+import zipfile  # ZIP 파일 생성을 위한 라이브러리 추가
 
 # 파일 경로 설정
 BASE_FOLDER = "flashcard_data"
@@ -603,10 +604,38 @@ def sidebar():
     # 로그인한 사용자 정보 표시
     if st.session_state.logged_in and st.session_state.username:
         st.sidebar.success(f"{st.session_state.username}님 환영합니다!")
-        if st.sidebar.button("로그아웃"):
-            st.session_state.logged_in = False
-            st.session_state.username = None
-            st.rerun()
+        
+        # 로그아웃과 백업 버튼을 나란히 배치
+        col1, col2 = st.sidebar.columns(2)
+        
+        with col1:
+            if st.button("로그아웃", key="logout_btn"):
+                st.session_state.logged_in = False
+                st.session_state.username = None
+                st.rerun()
+        
+        with col2:
+            # 데이터 백업 버튼
+            if st.button("데이터 전체 백업", key="backup_btn"):
+                username = st.session_state.username
+                zip_data = create_backup_zip(username)
+                
+                if zip_data:
+                    # 백업 파일명 생성
+                    backup_filename = f"{username}_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                    
+                    # 다운로드 버튼 생성
+                    st.sidebar.download_button(
+                        label="백업 파일 다운로드",
+                        data=zip_data,
+                        file_name=backup_filename,
+                        mime="application/zip",
+                        key="download_backup"
+                    )
+                    
+                    st.sidebar.success("백업이 생성되었습니다. '백업 파일 다운로드' 버튼을 클릭하여 저장하세요.")
+                else:
+                    st.sidebar.error("백업 생성에 실패했습니다.")
     
     # 모드 관련 세션 상태 설정
     if "mode" not in st.session_state:
@@ -3342,6 +3371,63 @@ def all_domains_topic_list():
                                 st.error(f"이미지 로드 중 오류: {str(e)}")
                     else:
                         st.info("이미지가 없습니다.")
+
+# 백업 함수 추가 (기존 helper 함수들 근처에 추가)
+def create_backup_zip(username):
+    """
+    사용자의 data와 images 폴더를 압축하여 ZIP 파일을 생성합니다.
+    
+    Parameters:
+    -----------
+    username : str
+        백업할 사용자의 이름
+    
+    Returns:
+    --------
+    bytes
+        압축된 ZIP 파일의 바이트 데이터
+    """
+    try:
+        # 사용자 폴더 경로
+        user_folder = os.path.join(USERS_FOLDER, username)
+        data_folder = os.path.join(user_folder, "data")
+        images_folder = os.path.join(user_folder, "images")
+        
+        # 임시 ZIP 파일 경로
+        temp_zip_path = os.path.join(TEMP_IMAGE_FOLDER, f"{username}_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
+        
+        # ZIP 파일 생성
+        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # data 폴더 압축
+            if os.path.exists(data_folder):
+                for root, dirs, files in os.walk(data_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, user_folder)
+                        zipf.write(file_path, arcname)
+            
+            # images 폴더 압축
+            if os.path.exists(images_folder):
+                for root, dirs, files in os.walk(images_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, user_folder)
+                        zipf.write(file_path, arcname)
+        
+        # ZIP 파일 읽기
+        with open(temp_zip_path, "rb") as f:
+            zip_data = f.read()
+        
+        # 임시 파일 삭제
+        try:
+            os.remove(temp_zip_path)
+        except:
+            pass
+        
+        return zip_data
+    except Exception as e:
+        st.error(f"백업 생성 중 오류 발생: {str(e)}")
+        return None
 
 if __name__ == "__main__":
     main() 
