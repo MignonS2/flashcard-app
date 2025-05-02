@@ -565,6 +565,10 @@ def sidebar():
     # 전체 도메인 모드 선택
     st.sidebar.subheader("전체 도메인 모드")
     
+    if st.sidebar.button("전체 도메인 토픽 리스트", type="primary" if st.session_state.mode == "전체 토픽 리스트" else "secondary", use_container_width=True):
+        st.session_state.mode = "전체 토픽 리스트"
+        st.rerun()
+    
     if st.sidebar.button("전체 도메인 토픽 학습", type="primary" if st.session_state.mode == "전체 학습" else "secondary", use_container_width=True):
         st.session_state.mode = "전체 학습"
         st.rerun()
@@ -1355,6 +1359,8 @@ def main():
             if "all_show_quiz_image" not in st.session_state:
                 st.session_state.all_show_quiz_image = False
             all_domains_quiz_mode()
+        elif mode == "전체 토픽 리스트":
+            all_domains_topic_list()
         # 새로운 플래시카드 관리 인터페이스
         elif mode == "새 관리 인터페이스":
             st.title("플래시카드 관리")
@@ -2006,11 +2012,7 @@ def study_mode(domain):
                         with open(img_path, "rb") as img_file:
                             encoded_img = base64.b64encode(img_file.read()).decode()
                             st.markdown(f"""
-<<<<<<< HEAD
                             <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
-=======
-                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
->>>>>>> 225f98ea8e732ace574241a623d9dc352272b440
                                 onclick="openImageModal(this.src)">
                             """, unsafe_allow_html=True)
                     except Exception as e:
@@ -2266,7 +2268,7 @@ def quiz_mode(domain):
                         with open(img_path, "rb") as img_file:
                             encoded_img = base64.b64encode(img_file.read()).decode()
                             st.markdown(f"""
-                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
+                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
                                 onclick="openImageModal(this.src)">
                             """, unsafe_allow_html=True)
                     except Exception as e:
@@ -2478,7 +2480,7 @@ def all_domains_study_mode():
                         with open(img_path, "rb") as img_file:
                             encoded_img = base64.b64encode(img_file.read()).decode()
                             st.markdown(f"""
-                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
+                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
                                 onclick="openImageModal(this.src)">
                             """, unsafe_allow_html=True)
                     except Exception as e:
@@ -2761,13 +2763,139 @@ def all_domains_quiz_mode():
                         with open(img_path, "rb") as img_file:
                             encoded_img = base64.b64encode(img_file.read()).decode()
                             st.markdown(f"""
-                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
+                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
                                 onclick="openImageModal(this.src)">
                             """, unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"이미지 로드 중 오류: {str(e)}")
             else:
                 st.info("이 카드에는 이미지가 없습니다.")
+
+# 전체 도메인 토픽 리스트 화면
+def all_domains_topic_list():
+    import datetime
+    st.header("전체 도메인 토픽 리스트")
+    
+    data = load_data()
+    domains = list(data.keys())
+    
+    if not domains:
+        st.info("플래시카드가 없습니다. 플래시카드를 추가한 후 확인해보세요!")
+        return
+    
+    # 도메인 선택 필터
+    selected_domains = st.multiselect("도메인 필터", domains, default=domains)
+    
+    if not selected_domains:
+        st.warning("도메인을 선택해주세요.")
+        return
+    
+    # 모든 도메인과 토픽 정보 수집
+    all_domain_topics = []
+    for domain in selected_domains:
+        topics = data[domain]
+        for topic_name, terms in topics.items():
+            # 각 토픽의 카드 개수
+            card_count = len(terms)
+            
+            # 최종 수정일 계산 (여기서는 현재 시간으로 대체, 실제로는 파일 수정 시간 등을 사용할 수 있음)
+            # 사용자 폴더에서 해당 토픽 폴더의 최종 수정 시간 가져오기
+            try:
+                if st.session_state.username:
+                    topic_folder = os.path.join(get_user_image_folder(st.session_state.username), domain, topic_name)
+                    if os.path.exists(topic_folder):
+                        modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(topic_folder))
+                    else:
+                        modified_time = datetime.datetime.now()
+                else:
+                    modified_time = datetime.datetime.now()
+            except:
+                modified_time = datetime.datetime.now()
+            
+            # 도메인:토픽 형태로 저장
+            all_domain_topics.append({
+                "domain": domain,
+                "topic": topic_name,
+                "display": f"{domain}:{topic_name}",
+                "card_count": card_count,
+                "modified_time": modified_time
+            })
+    
+    # 정렬 옵션
+    sort_options = ["도메인명순", "토픽명순", "카드개수순", "최근 수정순"]
+    sort_option = st.radio("정렬 방식", sort_options, horizontal=True)
+    
+    # 정렬 방향
+    sort_direction = st.radio("정렬 방향", ["오름차순", "내림차순"], horizontal=True)
+    
+    # 정렬 기준 설정
+    if sort_option == "도메인명순":
+        all_domain_topics.sort(key=lambda x: x["domain"])
+    elif sort_option == "토픽명순":
+        all_domain_topics.sort(key=lambda x: x["topic"])
+    elif sort_option == "카드개수순":
+        all_domain_topics.sort(key=lambda x: x["card_count"])
+    elif sort_option == "최근 수정순":
+        all_domain_topics.sort(key=lambda x: x["modified_time"])
+    
+    # 내림차순이면 리스트 뒤집기
+    if sort_direction == "내림차순":
+        all_domain_topics.reverse()
+    
+    # 검색 기능
+    search_term = st.text_input("검색어", "")
+    if search_term:
+        search_term = search_term.lower()
+        all_domain_topics = [
+            item for item in all_domain_topics 
+            if search_term in item["domain"].lower() or search_term in item["topic"].lower()
+        ]
+    
+    # 전체 도메인:토픽 목록 표시
+    st.subheader(f"전체 플래시카드 목록 ({len(all_domain_topics)}개)")
+    
+    # 도메인:토픽 리스트와 카드 개수 표시
+    for idx, item in enumerate(all_domain_topics):
+        domain = item["domain"]
+        topic = item["topic"]
+        card_count = item["card_count"]
+        modified_time = item["modified_time"].strftime("%Y-%m-%d %H:%M")
+        
+        # 각 도메인:토픽 표시
+        with st.expander(f"{domain}:{topic} ({card_count}개) - 최종 수정: {modified_time}"):
+            # 해당 토픽의 모든 카드 표시
+            cards = data[domain][topic]
+            
+            for term, card_data in cards.items():
+                st.markdown("---")
+                st.markdown(f"### 정의/개념 : {term}")
+                
+                # 컨텐츠 열 분할 (내용 / 이미지)
+                content_col, image_col = st.columns([1, 1])
+                
+                with content_col:
+                    # 핵심키워드, 두음, 내용 표시
+                    st.markdown(f"**핵심키워드:** {card_data.get('keyword', '정보 없음')}")
+                    st.markdown(f"**두음:** {card_data.get('rhyming', '정보 없음')}")
+                    st.markdown(f"**내용:**\n{card_data.get('content', '정보 없음')}")
+                
+                with image_col:
+                    # 이미지 표시
+                    image_paths = get_all_image_paths(domain, topic, term)
+                    if image_paths:
+                        for img_path in image_paths:
+                            try:
+                                # 이미지를 base64로 인코딩하여 HTML로 표시
+                                with open(img_path, "rb") as img_file:
+                                    encoded_img = base64.b64encode(img_file.read()).decode()
+                                    st.markdown(f"""
+                                    <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
+                                        onclick="openImageModal(this.src)">
+                                    """, unsafe_allow_html=True)
+                            except Exception as e:
+                                st.error(f"이미지 로드 중 오류: {str(e)}")
+                    else:
+                        st.info("이미지가 없습니다.")
 
 if __name__ == "__main__":
     main() 
