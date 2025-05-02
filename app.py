@@ -3430,8 +3430,8 @@ def all_domains_topic_list():
 # 백업 함수 추가 (기존 helper 함수들 근처에 추가)
 def create_backup_zip(username):
     """
-    사용자의 data와 images 폴더를 압축하여 ZIP 파일을 생성합니다.
-    'mignon' 계정인 경우 users.json 파일도 함께 백업합니다.
+    일반 사용자: 사용자의 data와 images 폴더를 압축하여 ZIP 파일을 생성합니다.
+    'mignon' 계정: 전체 users 폴더를 압축하여 관리자용 백업을 생성합니다.
     
     Parameters:
     -----------
@@ -3444,39 +3444,57 @@ def create_backup_zip(username):
         압축된 ZIP 파일의 바이트 데이터
     """
     try:
-        # 사용자 폴더 경로
-        user_folder = os.path.join(USERS_FOLDER, username)
-        data_folder = os.path.join(user_folder, "data")
-        images_folder = os.path.join(user_folder, "images")
-        
         # 임시 ZIP 파일 경로
-        temp_zip_path = os.path.join(TEMP_IMAGE_FOLDER, f"{username}_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # ZIP 파일 생성
-        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # data 폴더 압축
-            if os.path.exists(data_folder):
-                for root, dirs, files in os.walk(data_folder):
+        # 'mignon' 계정인 경우 (관리자 백업)
+        if username.lower() == 'mignon':
+            # 관리자 백업용 임시 ZIP 파일 경로
+            temp_zip_path = os.path.join(TEMP_IMAGE_FOLDER, f"admin_backup_{timestamp}.zip")
+            
+            # users 폴더 전체 경로
+            users_folder = USERS_FOLDER  # flashcard_data/users
+            
+            # ZIP 파일 생성 - 전체 users 폴더 압축
+            with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(users_folder):
                     for file in files:
                         file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, user_folder)
+                        # BASE_FOLDER 기준 상대 경로 계산 (flashcard_data)
+                        # users 폴더부터의 경로를 유지하기 위해
+                        base_folder = os.path.dirname(users_folder)  # flashcard_data
+                        arcname = os.path.relpath(file_path, base_folder)
                         zipf.write(file_path, arcname)
             
-            # images 폴더 압축
-            if os.path.exists(images_folder):
-                for root, dirs, files in os.walk(images_folder):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, user_folder)
-                        zipf.write(file_path, arcname)
+            st.sidebar.info("관리자 계정으로 백업: 모든 사용자 데이터가 백업되었습니다.")
             
-            # 'mignon' 계정인 경우 users.json 파일도 함께 백업
-            if username.lower() == 'mignon':
-                if os.path.exists(USER_DATA_FILE):
-                    # users.json 파일을 'users_data' 폴더에 저장
-                    arcname = os.path.join('users_data', 'users.json')
-                    zipf.write(USER_DATA_FILE, arcname)
-                    st.sidebar.info("관리자 계정으로 백업: users.json 파일이 함께 백업되었습니다.")
+        # 일반 사용자 백업
+        else:
+            # 사용자 백업용 임시 ZIP 파일 경로
+            temp_zip_path = os.path.join(TEMP_IMAGE_FOLDER, f"{username}_backup_{timestamp}.zip")
+            
+            # 사용자 폴더 경로
+            user_folder = os.path.join(USERS_FOLDER, username)
+            data_folder = os.path.join(user_folder, "data")
+            images_folder = os.path.join(user_folder, "images")
+            
+            # ZIP 파일 생성
+            with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # data 폴더 압축
+                if os.path.exists(data_folder):
+                    for root, dirs, files in os.walk(data_folder):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, user_folder)
+                            zipf.write(file_path, arcname)
+                
+                # images 폴더 압축
+                if os.path.exists(images_folder):
+                    for root, dirs, files in os.walk(images_folder):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, user_folder)
+                            zipf.write(file_path, arcname)
         
         # ZIP 파일 읽기
         with open(temp_zip_path, "rb") as f:
