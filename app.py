@@ -605,8 +605,8 @@ def sidebar():
     if st.session_state.logged_in and st.session_state.username:
         st.sidebar.success(f"{st.session_state.username}님 환영합니다!")
         
-        # 로그아웃과 백업 버튼을 나란히 배치
-        col1, col2 = st.sidebar.columns(2)
+        # 로그아웃, 백업, 임포트 버튼을 나란히 배치
+        col1, col2, col3 = st.sidebar.columns(3)
         
         with col1:
             if st.button("로그아웃", key="logout_btn"):
@@ -616,7 +616,7 @@ def sidebar():
         
         with col2:
             # 데이터 백업 버튼
-            if st.button("데이터 전체 백업", key="backup_btn"):
+            if st.button("데이터 백업", key="backup_btn"):
                 username = st.session_state.username
                 zip_data = create_backup_zip(username)
                 
@@ -626,16 +626,63 @@ def sidebar():
                     
                     # 다운로드 버튼 생성
                     st.sidebar.download_button(
-                        label="백업 파일 다운로드",
+                        label="백업 다운로드",
                         data=zip_data,
                         file_name=backup_filename,
                         mime="application/zip",
                         key="download_backup"
                     )
                     
-                    st.sidebar.success("백업이 생성되었습니다. '백업 파일 다운로드' 버튼을 클릭하여 저장하세요.")
+                    st.sidebar.success("백업이 생성되었습니다. '백업 다운로드' 버튼을 클릭하여 저장하세요.")
                 else:
                     st.sidebar.error("백업 생성에 실패했습니다.")
+        
+        with col3:
+            # 데이터 임포트 버튼 - 상태 토글
+            if "show_import" not in st.session_state:
+                st.session_state.show_import = False
+                
+            if st.button("데이터 Import", key="import_btn"):
+                st.session_state.show_import = not st.session_state.show_import
+                st.rerun()
+        
+        # 임포트 UI 표시
+        if st.session_state.get("show_import", False):
+            with st.sidebar.expander("데이터 임포트", expanded=True):
+                st.warning("기존 데이터가 덮어쓰기될 수 있습니다!")
+                
+                # 임포트 설명 추가
+                st.markdown("""
+                ### 임포트 가이드
+                - ZIP 파일 내에 **data** 또는 **images** 디렉토리가 있어야 합니다.
+                - 파일 구조는 다음과 같아야 합니다:
+                  - `data/`: 플래시카드 데이터 파일이 저장된 폴더
+                  - `images/[도메인명]/[토픽명]/`: 이미지 파일들이 저장된 폴더
+                - 일반적으로 '데이터 백업' 기능으로 생성된 ZIP 파일이 이 구조를 가집니다.
+                """)
+                
+                uploaded_file = st.file_uploader("Import 할 ZIP 파일 선택", type=["zip"], key="import_zip_uploader", 
+                                               help="백업된 ZIP 파일 또는 data/images 폴더 구조를 가진 ZIP 파일을 선택하세요.")
+                
+                # 추가 설명
+                if uploaded_file is None:
+                    st.info("참고: 올바른 디렉토리 구조가 포함된 ZIP 파일을 업로드하세요. 폴더 구조가 맞지 않으면 임포트가 실패할 수 있습니다.")
+                
+                if uploaded_file is not None:
+                    if st.button("임포트 실행", key="run_import_btn"):
+                        username = st.session_state.username
+                        success, message = import_backup_zip(username, uploaded_file)
+                        
+                        if success:
+                            # 성공 메시지를 세션 상태에 저장 (메인 화면에 표시하기 위함)
+                            st.session_state.import_success = True
+                            st.session_state.import_message = message
+                            st.success(message)
+                            # 임포트 UI 닫기
+                            st.session_state.show_import = False
+                            st.rerun()
+                        else:
+                            st.error(message)
     
     # 모드 관련 세션 상태 설정
     if "mode" not in st.session_state:
@@ -1429,6 +1476,14 @@ def main():
     
     # 데이터 초기화
     initialize_data()
+    
+    # 임포트 성공 메시지 표시 (세션 상태에 저장된 경우)
+    if st.session_state.get("import_success", False):
+        st.success(f"데이터 임포트가 성공적으로 완료되었습니다: {st.session_state.get('import_message', '')}")
+        # 메시지 표시 후 세션 상태 초기화
+        st.session_state.import_success = False
+        if 'import_message' in st.session_state:
+            del st.session_state.import_message
     
     # 로그인 상태 확인
     if not st.session_state.logged_in:
@@ -3428,6 +3483,435 @@ def create_backup_zip(username):
     except Exception as e:
         st.error(f"백업 생성 중 오류 발생: {str(e)}")
         return None
+
+# 1. 데이터 임포트 함수 추가 
+def import_backup_zip(username, zip_file):
+    """
+    업로드된 ZIP 파일에서 data와 images 디렉토리를 추출하여
+    사용자의 현재 디렉토리로 덮어씁니다.
+    
+    Parameters:
+    -----------
+    username : str
+        데이터를 임포트할 사용자의 이름
+    zip_file : UploadedFile
+        업로드된 ZIP 파일
+    
+    Returns:
+    --------
+    bool, str
+        성공 여부 및 메시지
+    """
+    try:
+        # 사용자 폴더 경로
+        user_folder = os.path.join(USERS_FOLDER, username)
+        data_folder = os.path.join(user_folder, "data")
+        images_folder = os.path.join(user_folder, "images")
+        
+        # 임시 압축 해제 폴더 경로
+        temp_extract_folder = os.path.join(TEMP_IMAGE_FOLDER, f"{username}_import_temp_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        os.makedirs(temp_extract_folder, exist_ok=True)
+        
+        # 임시 ZIP 파일 저장 경로
+        temp_zip_path = os.path.join(TEMP_IMAGE_FOLDER, f"temp_import_{username}.zip")
+        
+        # 업로드된 ZIP 파일 저장
+        with open(temp_zip_path, "wb") as f:
+            f.write(zip_file.getbuffer())
+        
+        # ZIP 파일 유효성 검사 및 압축 해제
+        try:
+            with zipfile.ZipFile(temp_zip_path, 'r') as zipf:
+                # ZIP 파일 내용 확인
+                file_list = zipf.namelist()
+                has_data = any(name.startswith('data/') for name in file_list)
+                has_images = any(name.startswith('images/') for name in file_list)
+                
+                if not (has_data or has_images):
+                    return False, "ZIP 파일에 data 또는 images 디렉토리가 없습니다."
+                
+                # 압축 해제
+                zipf.extractall(temp_extract_folder)
+        except zipfile.BadZipFile:
+            return False, "유효하지 않은 ZIP 파일입니다."
+        
+        # 파일 복사 및 덮어쓰기
+        import_count = {"data": 0, "images": 0}
+        
+        # data 디렉토리 처리
+        temp_data_folder = os.path.join(temp_extract_folder, "data")
+        if os.path.exists(temp_data_folder):
+            os.makedirs(data_folder, exist_ok=True)
+            for root, dirs, files in os.walk(temp_data_folder):
+                for file in files:
+                    src_path = os.path.join(root, file)
+                    # 상대 경로 계산
+                    rel_path = os.path.relpath(src_path, temp_data_folder)
+                    dest_path = os.path.join(data_folder, rel_path)
+                    
+                    # 대상 디렉토리 생성
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    
+                    # 파일 복사
+                    import shutil
+                    shutil.copy2(src_path, dest_path)
+                    import_count["data"] += 1
+        
+        # images 디렉토리 처리
+        temp_images_folder = os.path.join(temp_extract_folder, "images")
+        if os.path.exists(temp_images_folder):
+            os.makedirs(images_folder, exist_ok=True)
+            for root, dirs, files in os.walk(temp_images_folder):
+                for file in files:
+                    src_path = os.path.join(root, file)
+                    # 상대 경로 계산
+                    rel_path = os.path.relpath(src_path, temp_images_folder)
+                    dest_path = os.path.join(images_folder, rel_path)
+                    
+                    # 대상 디렉토리 생성
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    
+                    # 파일 복사
+                    import shutil
+                    shutil.copy2(src_path, dest_path)
+                    import_count["images"] += 1
+        
+        # 임시 파일 정리
+        try:
+            os.remove(temp_zip_path)
+            import shutil
+            shutil.rmtree(temp_extract_folder)
+        except:
+            pass
+        
+        return True, f"임포트 완료: data 파일 {import_count['data']}개, 이미지 파일 {import_count['images']}개"
+    
+    except Exception as e:
+        return False, f"임포트 중 오류 발생: {str(e)}"
+
+# 2. 사이드바 함수 수정 - 백업 및 임포트 버튼 추가
+def sidebar():
+    st.sidebar.title("정보관리기술사 암기장")
+    
+    # 로그인한 사용자 정보 표시
+    if st.session_state.logged_in and st.session_state.username:
+        st.sidebar.success(f"{st.session_state.username}님 환영합니다!")
+        
+        # 로그아웃, 백업, 임포트 버튼을 나란히 배치
+        col1, col2, col3 = st.sidebar.columns(3)
+        
+        with col1:
+            if st.button("로그아웃", key="logout_btn"):
+                st.session_state.logged_in = False
+                st.session_state.username = None
+                st.rerun()
+        
+        with col2:
+            # 데이터 백업 버튼
+            if st.button("데이터 백업", key="backup_btn"):
+                username = st.session_state.username
+                zip_data = create_backup_zip(username)
+                
+                if zip_data:
+                    # 백업 파일명 생성
+                    backup_filename = f"{username}_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                    
+                    # 다운로드 버튼 생성
+                    st.sidebar.download_button(
+                        label="백업 다운로드",
+                        data=zip_data,
+                        file_name=backup_filename,
+                        mime="application/zip",
+                        key="download_backup"
+                    )
+                    
+                    st.sidebar.success("백업이 생성되었습니다. '백업 다운로드' 버튼을 클릭하여 저장하세요.")
+                else:
+                    st.sidebar.error("백업 생성에 실패했습니다.")
+        
+        with col3:
+            # 데이터 임포트 버튼 - 상태 토글
+            if "show_import" not in st.session_state:
+                st.session_state.show_import = False
+                
+            if st.button("데이터 Import", key="import_btn"):
+                st.session_state.show_import = not st.session_state.show_import
+                st.rerun()
+        
+        # 임포트 UI 표시
+        if st.session_state.get("show_import", False):
+            with st.sidebar.expander("데이터 임포트", expanded=True):
+                st.warning("기존 데이터가 덮어쓰기될 수 있습니다!")
+                
+                # 임포트 설명 추가
+                st.markdown("""
+                ### 임포트 가이드
+                - ZIP 파일 내에 **data** 또는 **images** 디렉토리가 있어야 합니다.
+                - 파일 구조는 다음과 같아야 합니다:
+                  - `data/`: 플래시카드 데이터 파일이 저장된 폴더
+                  - `images/[도메인명]/[토픽명]/`: 이미지 파일들이 저장된 폴더
+                - 일반적으로 '데이터 백업' 기능으로 생성된 ZIP 파일이 이 구조를 가집니다.
+                """)
+                
+                uploaded_file = st.file_uploader("Import 할 ZIP 파일 선택", type=["zip"], key="import_zip_uploader", 
+                                               help="백업된 ZIP 파일 또는 data/images 폴더 구조를 가진 ZIP 파일을 선택하세요.")
+                
+                # 추가 설명
+                if uploaded_file is None:
+                    st.info("참고: 올바른 디렉토리 구조가 포함된 ZIP 파일을 업로드하세요. 폴더 구조가 맞지 않으면 임포트가 실패할 수 있습니다.")
+                
+                if uploaded_file is not None:
+                    if st.button("임포트 실행", key="run_import_btn"):
+                        username = st.session_state.username
+                        success, message = import_backup_zip(username, uploaded_file)
+                        
+                        if success:
+                            # 성공 메시지를 세션 상태에 저장 (메인 화면에 표시하기 위함)
+                            st.session_state.import_success = True
+                            st.session_state.import_message = message
+                            st.success(message)
+                            # 임포트 UI 닫기
+                            st.session_state.show_import = False
+                            st.rerun()
+                        else:
+                            st.error(message)
+    
+    # 모드 관련 세션 상태 설정
+    if "mode" not in st.session_state:
+        st.session_state.mode = "플래시카드 관리"
+    
+    st.sidebar.subheader("모드 선택")
+    
+    # 도메인 기반 모드 선택 (버튼 인터페이스)
+    if st.sidebar.button("플래시카드 관리", type="primary" if st.session_state.mode == "플래시카드 관리" else "secondary", use_container_width=True):
+        st.session_state.mode = "플래시카드 관리"
+        st.rerun()
+        
+    if st.sidebar.button("학습 모드", type="primary" if st.session_state.mode == "학습 모드" else "secondary", use_container_width=True):
+        st.session_state.mode = "학습 모드"
+        st.rerun()
+        
+    if st.sidebar.button("퀴즈 모드", type="primary" if st.session_state.mode == "퀴즈 모드" else "secondary", use_container_width=True):
+        st.session_state.mode = "퀴즈 모드"
+        # 퀴즈 모드에서 이미지가 처음에 보이지 않도록 설정
+        st.session_state.show_quiz_image = False
+        st.rerun()
+    
+    st.sidebar.divider()
+    
+    # 전체 도메인 모드 선택
+    st.sidebar.subheader("전체 도메인 모드")
+    
+    if st.sidebar.button("전체 도메인 토픽 리스트", type="primary" if st.session_state.mode == "전체 토픽 리스트" else "secondary", use_container_width=True):
+        st.session_state.mode = "전체 토픽 리스트"
+        st.rerun()
+    
+    if st.sidebar.button("전체 도메인 토픽 학습", type="primary" if st.session_state.mode == "전체 학습" else "secondary", use_container_width=True):
+        st.session_state.mode = "전체 학습"
+        st.rerun()
+    
+    if st.sidebar.button("전체 도메인 토픽 퀴즈", type="primary" if st.session_state.mode == "전체 퀴즈" else "secondary", use_container_width=True):
+        st.session_state.mode = "전체 퀴즈"
+        # 전체 도메인 퀴즈 모드에서 이미지가 처음에 보이지 않도록 설정
+        st.session_state.all_show_quiz_image = False
+        st.rerun()
+    
+    st.sidebar.divider()
+    
+    # 도메인 선택
+    data = load_data()
+    domains = list(data.keys())
+    
+    if "selected_domain" not in st.session_state:
+        st.session_state.selected_domain = domains[0] if domains else None
+    
+    # 도메인 선택 UI 강조
+    st.sidebar.markdown("""
+    <div style="margin-bottom: 10px;">
+        <span style="font-size: 18px; font-weight: 600; color: #1E3A8A;">
+            도메인 선택
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    selected_domain = st.sidebar.selectbox("", domains, index=domains.index(st.session_state.selected_domain) if st.session_state.selected_domain in domains else 0, key="domain_select_box")
+    
+    # 일반 모드일 때만 도메인 업데이트
+    if st.session_state.mode in ["플래시카드 관리", "학습 모드", "퀴즈 모드"]:
+        st.session_state.selected_domain = selected_domain
+    
+    # 도메인 관리 섹션
+    st.sidebar.subheader("도메인 관리")
+    
+    # 새 도메인 추가
+    with st.sidebar.expander("새 도메인 추가"):
+        # 도메인 추가 성공 플래그 확인
+        if "domain_add_success" not in st.session_state:
+            st.session_state.domain_add_success = False
+            
+        # 성공 후 초기화를 위한 키 관리
+        if "domain_add_counter" not in st.session_state:
+            st.session_state.domain_add_counter = 0
+            
+        # 성공 후 다음 렌더링에서 입력창 초기화를 위해 키를 변경
+        if st.session_state.domain_add_success:
+            st.session_state.domain_add_counter += 1
+            st.session_state.domain_add_success = False
+            
+        new_domain = st.text_input("새 도메인 이름", key=f"new_domain_input_{st.session_state.domain_add_counter}")
+        
+        if st.button("도메인 추가") and new_domain and new_domain not in domains:
+            data[new_domain] = {}
+            save_data(data)
+            st.success(f"'{new_domain}' 도메인이 추가되었습니다!")
+            # 성공 플래그 설정
+            st.session_state.domain_add_success = True
+            st.rerun()
+    
+    # 도메인 수정
+    with st.sidebar.expander("도메인 이름 수정"):
+        if domains:
+            # 도메인 수정 성공 플래그 확인
+            if "domain_edit_success" not in st.session_state:
+                st.session_state.domain_edit_success = False
+                
+            # 성공 후 초기화를 위한 키 관리
+            if "domain_edit_counter" not in st.session_state:
+                st.session_state.domain_edit_counter = 0
+                
+            # 성공 후 다음 렌더링에서 입력창 초기화를 위해 키를 변경
+            if st.session_state.domain_edit_success:
+                st.session_state.domain_edit_counter += 1
+                st.session_state.domain_edit_success = False
+            
+            domain_to_edit = st.selectbox("수정할 도메인 선택", domains, key=f"edit_domain_select_{st.session_state.domain_edit_counter}")
+            new_domain_name = st.text_input("새 도메인 이름", key=f"edit_domain_name_{st.session_state.domain_edit_counter}")
+            
+            # 버튼을 한 번만 선언하고 결과를 변수에 저장
+            edit_button_clicked = st.button("도메인 이름 수정", key=f"edit_domain_button_{st.session_state.domain_edit_counter}")
+            
+            # 버튼이 클릭되었고 새 도메인 이름이 입력된 경우
+            if edit_button_clicked and new_domain_name:
+                # 유효성 검사
+                if domain_to_edit == new_domain_name:
+                    st.warning("새 도메인 이름이 기존 이름과 동일합니다. 다른 이름을 사용하세요.")
+                elif new_domain_name in domains:
+                    st.error(f"'{new_domain_name}' 도메인이 이미 존재합니다. 다른 이름을 사용하세요.")
+                else:
+                    # 도메인 이름 변경
+                    data[new_domain_name] = data[domain_to_edit]
+                    del data[domain_to_edit]
+                    save_data(data)
+                    
+                    # 이미지 폴더 이름도 변경 (사용자별 폴더 경로 사용)
+                    if st.session_state.username:
+                        old_folder = os.path.join(get_user_image_folder(st.session_state.username), domain_to_edit)
+                        new_folder = os.path.join(get_user_image_folder(st.session_state.username), new_domain_name)
+                        
+                        if os.path.exists(old_folder):
+                            try:
+                                # 새 폴더가 이미 존재하면 병합, 아니면 이름 변경
+                                if os.path.exists(new_folder):
+                                    import shutil
+                                    # 파일 복사
+                                    for item in os.listdir(old_folder):
+                                        s = os.path.join(old_folder, item)
+                                        d = os.path.join(new_folder, item)
+                                        if os.path.isdir(s):
+                                            if not os.path.exists(d):
+                                                shutil.copytree(s, d)
+                                        else:
+                                            shutil.copy2(s, d)
+                                    # 기존 폴더 삭제
+                                    shutil.rmtree(old_folder)
+                                else:
+                                    # 단순 이름 변경
+                                    os.rename(old_folder, new_folder)
+                            except Exception as e:
+                                st.error(f"폴더 이름 변경 중 오류 발생: {str(e)}")
+                    
+                    # 세션 상태의 선택된 도메인도 업데이트
+                    if st.session_state.selected_domain == domain_to_edit:
+                        st.session_state.selected_domain = new_domain_name
+                    
+                    # 성공 플래그 설정
+                    st.session_state.domain_edit_success = True
+                    
+                    st.success(f"'{domain_to_edit}'이(가) '{new_domain_name}'으로 변경되었습니다!")
+                    st.rerun()
+            elif edit_button_clicked and not new_domain_name:
+                st.warning("새 도메인 이름을 입력해주세요.")
+        else:
+            st.info("수정할 도메인이 없습니다.")
+    
+    # 도메인 삭제
+    with st.sidebar.expander("도메인 삭제"):
+        if domains:
+            # 도메인 삭제 성공 플래그 확인
+            if "domain_delete_success" not in st.session_state:
+                st.session_state.domain_delete_success = False
+                
+            # 성공 후 초기화를 위한 키 관리
+            if "domain_delete_counter" not in st.session_state:
+                st.session_state.domain_delete_counter = 0
+                
+            # 성공 후 다음 렌더링에서 입력창 초기화를 위해 키를 변경
+            if st.session_state.domain_delete_success:
+                st.session_state.domain_delete_counter += 1
+                st.session_state.domain_delete_success = False
+            
+            domain_to_delete = st.selectbox("삭제할 도메인 선택", domains, key=f"delete_domain_select_{st.session_state.domain_delete_counter}")
+            
+            # 직접 삭제 버튼으로 변경
+            delete_button = st.button("도메인 삭제", type="secondary", key=f"delete_domain_button_{st.session_state.domain_delete_counter}")
+            if delete_button and domain_to_delete:
+                # 도메인 삭제 로직
+                # 확인 대화상자 대신 직접 삭제 처리
+                try:
+                    # 데이터에서 도메인 삭제
+                    del data[domain_to_delete]
+                    save_data(data)
+                    
+                    # 이미지 폴더도 삭제 (사용자별 폴더 경로 사용)
+                    if st.session_state.username:
+                        domain_folder = os.path.join(get_user_image_folder(st.session_state.username), domain_to_delete)
+                        if os.path.exists(domain_folder):
+                            try:
+                                import shutil
+                                shutil.rmtree(domain_folder)
+                            except Exception as e:
+                                st.error(f"도메인 폴더 삭제 중 오류 발생: {str(e)}")
+                    
+                    # 세션 상태의 선택된 도메인도 업데이트
+                    if st.session_state.selected_domain == domain_to_delete:
+                        remaining_domains = list(data.keys())
+                        st.session_state.selected_domain = remaining_domains[0] if remaining_domains else None
+                    
+                    # 성공 플래그 설정
+                    st.session_state.domain_delete_success = True
+                    
+                    st.success(f"'{domain_to_delete}' 도메인이 삭제되었습니다!")
+                    # 페이지 새로고침
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"도메인 삭제 중 오류 발생: {str(e)}")
+        else:
+            st.info("삭제할 도메인이 없습니다.")
+    
+    # 사이드바 하단에 만든이 정보 추가
+    st.sidebar.divider()
+    st.sidebar.markdown(
+        """
+        <div style="text-align: center; padding: 10px; margin-top: 20px; background-color: #f0f7ff; border-radius: 8px; border-left: 4px solid #4263EB; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            <p style="font-weight: bold; font-size: 1rem; margin-bottom: 5px; color: #1E3A8A;">만든이 : 유민형( Vibe Coding with Cursor AI )</p>
+            <p style="font-size: 0.8rem; color: #4a5568;">© 2024-2025</p>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+    
+    # 모드와 도메인 반환
+    return st.session_state.mode, st.session_state.selected_domain
 
 if __name__ == "__main__":
     main() 
