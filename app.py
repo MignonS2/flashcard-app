@@ -3431,6 +3431,7 @@ def all_domains_topic_list():
 def create_backup_zip(username):
     """
     사용자의 data와 images 폴더를 압축하여 ZIP 파일을 생성합니다.
+    'mignon' 계정인 경우 users.json 파일도 함께 백업합니다.
     
     Parameters:
     -----------
@@ -3468,6 +3469,14 @@ def create_backup_zip(username):
                         file_path = os.path.join(root, file)
                         arcname = os.path.relpath(file_path, user_folder)
                         zipf.write(file_path, arcname)
+            
+            # 'mignon' 계정인 경우 users.json 파일도 함께 백업
+            if username.lower() == 'mignon':
+                if os.path.exists(USER_DATA_FILE):
+                    # users.json 파일을 'users_data' 폴더에 저장
+                    arcname = os.path.join('users_data', 'users.json')
+                    zipf.write(USER_DATA_FILE, arcname)
+                    st.sidebar.info("관리자 계정으로 백업: users.json 파일이 함께 백업되었습니다.")
         
         # ZIP 파일 읽기
         with open(temp_zip_path, "rb") as f:
