@@ -657,7 +657,16 @@ def sidebar():
     if "selected_domain" not in st.session_state:
         st.session_state.selected_domain = domains[0] if domains else None
     
-    selected_domain = st.sidebar.selectbox("도메인 선택", domains, index=domains.index(st.session_state.selected_domain) if st.session_state.selected_domain in domains else 0)
+    # 도메인 선택 UI 강조
+    st.sidebar.markdown("""
+    <div style="margin-bottom: 10px;">
+        <span style="font-size: 18px; font-weight: 600; color: #1E3A8A;">
+            도메인 선택
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    selected_domain = st.sidebar.selectbox("", domains, index=domains.index(st.session_state.selected_domain) if st.session_state.selected_domain in domains else 0, key="domain_select_box")
     
     # 일반 모드일 때만 도메인 업데이트
     if st.session_state.mode in ["플래시카드 관리", "학습 모드", "퀴즈 모드"]:
@@ -1553,7 +1562,14 @@ def main():
 
 # 플래시카드 관리 화면
 def manage_flashcards(domain):
-    st.header(f"{domain} - 플래시카드 관리")
+    # 도메인 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            {domain} - 플래시카드 관리
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     
@@ -1660,26 +1676,39 @@ def manage_flashcards(domain):
         st.subheader("기존 플래시카드")
         for topic_name, cards in topics.items():
             with st.expander(f"토픽: {topic_name} ({len(cards)}개)"):
-                # 토픽 삭제 버튼
-                if st.button(f"토픽 삭제: {topic_name}", key=f"del_topic_{topic_name}"):
-                    # 해당 토픽의 이미지 폴더 삭제
-                    if st.session_state.username:
-                        topic_folder = os.path.join(get_user_image_folder(st.session_state.username), domain, topic_name)
-                        if os.path.exists(topic_folder):
-                            try:
-                                for filename in os.listdir(topic_folder):
-                                    file_path = os.path.join(topic_folder, filename)
-                                    if os.path.isfile(file_path):
-                                        os.unlink(file_path)
-                                os.rmdir(topic_folder)
-                            except Exception as e:
-                                st.error(f"이미지 폴더 삭제 중 오류 발생: {e}")
-                    
-                    del data[domain][topic_name]
-                    save_data(data)
-                    st.success(f"'{topic_name}' 토픽이 삭제되었습니다!")
-                    time.sleep(1)
-                    st.rerun()
+                # 토픽 제목과 삭제 버튼 레이아웃 변경
+                col1, col2 = st.columns([5, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="margin-bottom: 15px;">
+                        <span style="font-size: 22px; font-weight: 600; color: #1E3A8A; background-color: #e8f0fe; padding: 5px 10px; border-radius: 5px; border-left: 4px solid #4263EB;">
+                            도메인: <b>{domain}</b> / 토픽: <b>{topic_name}</b>
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # 토픽 삭제 버튼을 오른쪽으로 이동
+                    if st.button(f"🗑️ 토픽 삭제", key=f"del_topic_{topic_name}", type="secondary"):
+                        # 해당 토픽의 이미지 폴더 삭제
+                        if st.session_state.username:
+                            topic_folder = os.path.join(get_user_image_folder(st.session_state.username), domain, topic_name)
+                            if os.path.exists(topic_folder):
+                                try:
+                                    for filename in os.listdir(topic_folder):
+                                        file_path = os.path.join(topic_folder, filename)
+                                        if os.path.isfile(file_path):
+                                            os.unlink(file_path)
+                                    os.rmdir(topic_folder)
+                                except Exception as e:
+                                    st.error(f"이미지 폴더 삭제 중 오류 발생: {e}")
+                        
+                        del data[domain][topic_name]
+                        save_data(data)
+                        st.success(f"'{topic_name}' 토픽이 삭제되었습니다!")
+                        time.sleep(1)
+                        st.rerun()
                 
                 # 카드 목록
                 for term, card_data in cards.items():
@@ -2038,7 +2067,14 @@ def manage_flashcards(domain):
 # 학습 모드 화면
 def study_mode(domain):
     import random  # random 모듈 추가
-    st.header(f"{domain} - 학습 모드")
+    # 도메인 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            {domain} - 학습 모드
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     topics = data[domain]
@@ -2141,7 +2177,14 @@ def study_mode(domain):
         
         col1, col2 = st.columns([5, 1])
         with col1:
-            st.subheader(f"토픽: {current_card['topic']}")
+            # 토픽 이름 표시 강조
+            st.markdown(f"""
+            <div style="margin-bottom: 15px;">
+                <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB;">
+                    토픽: {current_card['topic']}
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
         with col2:
             st.write(f"{st.session_state.current_card_index + 1}/{len(st.session_state.study_cards)}")
         
@@ -2221,7 +2264,14 @@ def study_mode(domain):
 # 퀴즈 모드 화면
 def quiz_mode(domain):
     import random  # random 모듈 추가
-    st.header(f"{domain} - 퀴즈 모드")
+    # 도메인 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            {domain} - 퀴즈 모드
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     topics = data[domain]
@@ -2323,9 +2373,13 @@ def quiz_mode(domain):
     st.markdown(f"""
     <div class='card'>
         <h3>문제 {st.session_state.current_quiz_index + 1}/{st.session_state.quiz_total}</h3>
-        <div style="margin-bottom: 10px;">
-            <span style="font-size: 14px; color: #666;">도메인: {domain}</span><br/>
-            <span style="font-size: 24px; font-weight: bold; color: #1E3A8A;">토픽: {current_card['topic']}</span>
+        <div style="margin-bottom: 15px;">
+            <span style="font-size: 20px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+                도메인: {domain}
+            </span>
+            <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+                토픽: {current_card['topic']}
+            </span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -2342,11 +2396,37 @@ def quiz_mode(domain):
         """, unsafe_allow_html=True)
         
         # 힌트 버튼들
-        col1, col2, col3, col4, col5 = st.columns(5)
+        # 비율 조정 - 핵심키워드 힌트 버튼에 더 많은 공간 할당
+        col1, col2, col3, col4, col5 = st.columns([1, 1.5, 1, 1, 1])
+        
+        # 모든 버튼의 스타일을 통일하는 CSS 추가
+        button_style = """
+        <style>
+        /* 모든 힌트 버튼 공통 스타일 */
+        div[data-testid="column"] .stButton button {
+            width: 100% !important;
+            height: 42px !important;
+            line-height: 1.2 !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 0.5rem 0.5rem !important;
+            font-size: 0.9rem !important;
+        }
+        
+        /* 핵심키워드 힌트 버튼 특별 스타일 */
+        div[data-testid="column"]:nth-of-type(2) .stButton button {
+            min-width: 130px !important;
+        }
+        </style>
+        """
+        st.markdown(button_style, unsafe_allow_html=True)
         
         with col1:
             # 정의/개념 힌트
-            if st.button("정의/개념 힌트", key="quiz_term_btn"):
+            if st.button("정의/개념", key="quiz_term_btn"):
                 st.session_state.show_quiz_hint = not st.session_state.show_quiz_hint
                 st.rerun()
         
@@ -2381,25 +2461,64 @@ def quiz_mode(domain):
         if st.session_state.show_quiz_hint:
             hint_displayed = True
             with st.expander("정의/개념 힌트", expanded=True):
-                st.markdown(f"**정의/개념:** {current_card['term']}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">정의/개념:</span> 
+                    <span style="font-size: 16px;">{current_card['term']}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 핵심키워드 힌트
         if st.session_state.show_quiz_keyword:
             hint_displayed = True
+            # 힌트 expander의 너비를 증가시키는 CSS 추가 (100%로 확장)
+            st.markdown("""
+            <style>
+            .stExpander {
+                min-width: 100% !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .streamlit-expanderContent {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: visible !important;
+            }
+            div[data-testid="stExpander"] > div {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             with st.expander("핵심키워드 힌트", expanded=True):
-                st.markdown(f"**핵심키워드:** {current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 4px 0; box-sizing: border-box; display: flex;">
+                    <span style="font-weight: bold; font-size: 16px; flex-shrink: 0;">핵심키워드:&nbsp;</span> 
+                    <span style="font-size: 16px; overflow-x: auto;">{current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 두음 힌트
         if st.session_state.show_quiz_rhyming:
             hint_displayed = True
             with st.expander("두음 힌트", expanded=True):
-                st.markdown(f"**두음:** {current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">두음:</span> 
+                    <span style="font-size: 16px;">{current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}</span>
+                </div>
+                """, unsafe_allow_html=True)
                 
         # 내용 힌트
         if st.session_state.show_quiz_content:
             hint_displayed = True
             with st.expander("내용 힌트", expanded=True):
-                st.markdown(f"**내용:** {current_card['card_data']['content']}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: pre-wrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">내용:</span> 
+                    <span style="font-size: 16px;">{current_card['card_data']['content']}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 사용자 답변 입력
         if not st.session_state.quiz_answer_checked:
@@ -2477,7 +2596,14 @@ def quiz_mode(domain):
 # 전체 도메인 학습 모드
 def all_domains_study_mode():
     import random
-    st.header("전체 도메인 학습 모드")
+    # 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            전체 도메인 학습 모드
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     domains = list(data.keys())
@@ -2608,7 +2734,17 @@ def all_domains_study_mode():
         
         col1, col2 = st.columns([5, 1])
         with col1:
-            st.subheader(f"도메인: {current_card['domain']} / 토픽: {current_card['topic']}")
+            # 도메인과 토픽 표시 강조
+            st.markdown(f"""
+            <div style="margin-bottom: 15px;">
+                <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+                    도메인: {current_card['domain']}
+                </span>
+                <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+                    토픽: {current_card['topic']}
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
         with col2:
             st.write(f"{st.session_state.all_current_card_index + 1}/{len(st.session_state.all_study_cards)}")
         
@@ -2689,7 +2825,14 @@ def all_domains_study_mode():
 # 전체 도메인 퀴즈 모드
 def all_domains_quiz_mode():
     import random
-    st.header("전체 도메인 퀴즈 모드")
+    # 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            전체 도메인 퀴즈 모드
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     domains = list(data.keys())
@@ -2817,9 +2960,13 @@ def all_domains_quiz_mode():
     st.markdown(f"""
     <div class='card'>
         <h3>문제 {st.session_state.all_current_quiz_index + 1}/{st.session_state.all_quiz_total}</h3>
-        <div style="margin-bottom: 10px;">
-            <span style="font-size: 14px; color: #666;">도메인: {current_card['domain']}</span><br/>
-            <span style="font-size: 24px; font-weight: bold; color: #1E3A8A;">토픽: {current_card['topic']}</span>
+        <div style="margin-bottom: 15px;">
+            <span style="font-size: 20px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+                도메인: {current_card['domain']}
+            </span>
+            <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+                토픽: {current_card['topic']}
+            </span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -2836,11 +2983,37 @@ def all_domains_quiz_mode():
         """, unsafe_allow_html=True)
         
         # 힌트 버튼들
-        col1, col2, col3, col4, col5 = st.columns(5)
+        # 비율 조정 - 핵심키워드 힌트 버튼에 더 많은 공간 할당
+        col1, col2, col3, col4, col5 = st.columns([1, 1.5, 1, 1, 1])
+        
+        # 모든 버튼의 스타일을 통일하는 CSS 추가
+        button_style = """
+        <style>
+        /* 모든 힌트 버튼 공통 스타일 */
+        div[data-testid="column"] .stButton button {
+            width: 100% !important;
+            height: 42px !important;
+            line-height: 1.2 !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 0.5rem 0.5rem !important;
+            font-size: 0.9rem !important;
+        }
+        
+        /* 핵심키워드 힌트 버튼 특별 스타일 */
+        div[data-testid="column"]:nth-of-type(2) .stButton button {
+            min-width: 130px !important;
+        }
+        </style>
+        """
+        st.markdown(button_style, unsafe_allow_html=True)
         
         with col1:
             # 정의/개념 힌트
-            if st.button("정의/개념 힌트", key="all_quiz_term_btn"):
+            if st.button("정의/개념", key="all_quiz_term_btn"):
                 st.session_state.all_show_quiz_hint = not st.session_state.all_show_quiz_hint
                 st.rerun()
         
@@ -2875,25 +3048,64 @@ def all_domains_quiz_mode():
         if st.session_state.all_show_quiz_hint:
             hint_displayed = True
             with st.expander("정의/개념 힌트", expanded=True):
-                st.markdown(f"**정의/개념:** {current_card['term']}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">정의/개념:</span> 
+                    <span style="font-size: 16px;">{current_card['term']}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 핵심키워드 힌트
         if st.session_state.all_show_quiz_keyword:
             hint_displayed = True
+            # 힌트 expander의 너비를 증가시키는 CSS 추가 (100%로 확장)
+            st.markdown("""
+            <style>
+            .stExpander {
+                min-width: 100% !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .streamlit-expanderContent {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: visible !important;
+            }
+            div[data-testid="stExpander"] > div {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             with st.expander("핵심키워드 힌트", expanded=True):
-                st.markdown(f"**핵심키워드:** {current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 4px 0; box-sizing: border-box; display: flex;">
+                    <span style="font-weight: bold; font-size: 16px; flex-shrink: 0;">핵심키워드:&nbsp;</span> 
+                    <span style="font-size: 16px; overflow-x: auto;">{current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 두음 힌트
         if st.session_state.all_show_quiz_rhyming:
             hint_displayed = True
             with st.expander("두음 힌트", expanded=True):
-                st.markdown(f"**두음:** {current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: nowrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">두음:</span> 
+                    <span style="font-size: 16px;">{current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}</span>
+                </div>
+                """, unsafe_allow_html=True)
                 
         # 내용 힌트
         if st.session_state.all_show_quiz_content:
             hint_displayed = True
             with st.expander("내용 힌트", expanded=True):
-                st.markdown(f"**내용:** {current_card['card_data']['content']}")
+                st.markdown(f"""
+                <div style="width: 100%; overflow-x: auto; white-space: pre-wrap; padding: 8px 0;">
+                    <span style="font-weight: bold; font-size: 16px;">내용:</span> 
+                    <span style="font-size: 16px;">{current_card['card_data']['content']}</span>
+                </div>
+                """, unsafe_allow_html=True)
         
         # 사용자 답변 입력
         if not st.session_state.all_quiz_answer_checked:
@@ -2972,7 +3184,14 @@ def all_domains_quiz_mode():
 # 전체 도메인 토픽 리스트 화면
 def all_domains_topic_list():
     import datetime
-    st.header("전체 도메인 토픽 리스트")
+    # 헤더 강조
+    st.markdown(f"""
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #e8f0fe; border-radius: 10px; border-left: 6px solid #4263EB;">
+        <h1 style="color: #1E3A8A; margin: 0; font-size: 28px; font-weight: 700;">
+            전체 도메인 토픽 리스트
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     
     data = load_data()
     domains = list(data.keys())
@@ -3069,8 +3288,27 @@ def all_domains_topic_list():
         card_count = item["card_count"]
         modified_time = item["modified_time"].strftime("%Y-%m-%d %H:%M")
         
-        # 각 도메인:토픽 표시
-        with st.expander(f"{domain}:{topic} ({card_count}개) - 최종 수정: {modified_time}"):
+        # 각 도메인:토픽 표시를 강조
+        expander_label = f"{domain}:{topic} ({card_count}개) - 최종 수정: {modified_time}"
+        
+        with st.expander(expander_label, expanded=False):
+            # 도메인:토픽 강조 표시를 expander 내부로 이동
+            st.markdown(f"""
+            <div style="margin-bottom: 15px;">
+                <span style="font-size: 18px; font-weight: 600;">
+                    <span style="color: #1E3A8A; background-color: #edf2ff; padding: 3px 8px; border-radius: 4px; margin-right: 5px;">
+                        {domain}
+                    </span>:
+                    <span style="color: #2a4a7f; background-color: #f0f7ff; padding: 3px 8px; border-radius: 4px;">
+                        {topic}
+                    </span>
+                    <span style="font-size: 14px; color: #4a5568; margin-left: 8px;">
+                        ({card_count}개) - 최종 수정: {modified_time}
+                    </span>
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            
             # 해당 토픽의 모든 카드 표시
             cards = data[domain][topic]
             
