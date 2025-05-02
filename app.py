@@ -2180,7 +2180,7 @@ def study_mode(domain):
             # 토픽 이름 표시 강조
             st.markdown(f"""
             <div style="margin-bottom: 15px;">
-                <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB;">
+                <span style="font-size: 32px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 12px 18px; border-radius: 8px; border-left: 6px solid #4263EB; display: inline-block; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                     토픽: {current_card['topic']}
                 </span>
             </div>
@@ -2374,10 +2374,10 @@ def quiz_mode(domain):
     <div class='card'>
         <h3>문제 {st.session_state.current_quiz_index + 1}/{st.session_state.quiz_total}</h3>
         <div style="margin-bottom: 15px;">
-            <span style="font-size: 20px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+            <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 10px 16px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; margin-bottom: 12px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                 도메인: {domain}
             </span>
-            <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+            <span style="font-size: 32px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 12px 18px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                 토픽: {current_card['topic']}
             </span>
         </div>
@@ -2737,10 +2737,10 @@ def all_domains_study_mode():
             # 도메인과 토픽 표시 강조
             st.markdown(f"""
             <div style="margin-bottom: 15px;">
-                <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+                <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 10px 16px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; margin-bottom: 12px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                     도메인: {current_card['domain']}
                 </span>
-                <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+                <span style="font-size: 32px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 12px 18px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                     토픽: {current_card['topic']}
                 </span>
             </div>
@@ -2961,10 +2961,10 @@ def all_domains_quiz_mode():
     <div class='card'>
         <h3>문제 {st.session_state.all_current_quiz_index + 1}/{st.session_state.all_quiz_total}</h3>
         <div style="margin-bottom: 15px;">
-            <span style="font-size: 20px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block; margin-bottom: 8px;">
+            <span style="font-size: 24px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 10px 16px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; margin-bottom: 12px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                 도메인: {current_card['domain']}
             </span>
-            <span style="font-size: 22px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #4263EB; display: block;">
+            <span style="font-size: 32px; font-weight: 700; color: #1E3A8A; background-color: #e8f0fe; padding: 12px 18px; border-radius: 8px; border-left: 6px solid #4263EB; display: block; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
                 토픽: {current_card['topic']}
             </span>
         </div>
