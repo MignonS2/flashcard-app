@@ -286,6 +286,75 @@ def get_image_path(domain, topic, term):
         return image_paths[0]  # 첫 번째 이미지만 반환
     return None
 
+# 이미지 순서 재정렬하는 함수 추가 
+def reorder_images(domain, topic, term, new_order):
+    """
+    주어진 새 순서대로 이미지 파일명을 재정렬합니다.
+    
+    Parameters:
+    -----------
+    domain : str
+        도메인 이름
+    topic : str
+        토픽 이름
+    term : str
+        용어/정의 이름
+    new_order : list
+        새 순서로 정렬된 이미지 경로 리스트
+    
+    Returns:
+    --------
+    bool
+        성공 여부
+    """
+    try:
+        if 'username' not in st.session_state:
+            st.error("로그인이 필요합니다.")
+            return False
+        
+        username = st.session_state.username
+        
+        # 윈도우 파일 시스템에서 사용할 수 없는 문자 제거
+        safe_domain = ''.join(c for c in domain if c not in '\\/:*?"<>|')
+        safe_topic = ''.join(c for c in topic if c not in '\\/:*?"<>|')
+        
+        # 사용자별 이미지 폴더와 도메인, 토픽 폴더 경로
+        topic_folder = os.path.join(get_user_image_folder(username), safe_domain, safe_topic)
+        
+        if not os.path.exists(topic_folder):
+            st.error(f"토픽 폴더가 존재하지 않습니다: {topic_folder}")
+            return False
+        
+        # 현재 타임스탬프 가져오기 - 모든 파일이 같은 타임스탬프 사용
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # 임시 파일명 사용하여 충돌 방지
+        temp_files = []
+        for i, img_path in enumerate(new_order):
+            if not os.path.exists(img_path):
+                continue
+                
+            _, ext = os.path.splitext(img_path)
+            temp_name = f"temp_{i}_{timestamp}{ext}"
+            temp_path = os.path.join(topic_folder, temp_name)
+            os.rename(img_path, temp_path)
+            temp_files.append((temp_path, ext))
+        
+        # 임시 파일을 최종 이름으로 변경
+        new_paths = []
+        for i, (temp_path, ext) in enumerate(temp_files):
+            new_name = f"{safe_topic}_{timestamp}_{i+1}{ext}"
+            new_path = os.path.join(topic_folder, new_name)
+            os.rename(temp_path, new_path)
+            new_paths.append(new_path)
+        
+        return True
+    except Exception as e:
+        st.error(f"이미지 순서 변경 중 오류 발생: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+        return False
+
 # 모든 이미지 경로 가져오기 (다중 이미지)
 def get_all_image_paths(domain, topic, term):
     try:
@@ -1624,18 +1693,142 @@ def manage_flashcards(domain):
                         # 이미지 표시
                         image_paths = get_all_image_paths(domain, topic_name, term)
                         if image_paths:
-                            # 이미지 표시
-                            for img_path in image_paths:
-                                try:
-                                    # 이미지를 base64로 인코딩하여 HTML로 표시
-                                    with open(img_path, "rb") as img_file:
-                                        encoded_img = base64.b64encode(img_file.read()).decode()
-                                        st.markdown(f"""
-                                        <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
-                                            onclick="openImageModal(this.src)">
-                                        """, unsafe_allow_html=True)
-                                except Exception as e:
-                                    st.error(f"이미지 로드 중 오류: {str(e)}")
+                            # 이미지 수가 2개 이상일 때만 순서 변경 버튼 표시
+                            if len(image_paths) >= 2:
+                                # 이미지 순서 변경 모드 확인
+                                container_key = f"reorder_{domain}_{topic_name}_{term}"
+                                if container_key not in st.session_state:
+                                    st.session_state[container_key] = False
+                                
+                                # 순서 변경 모드 토글 버튼
+                                btn_label = "이미지 정리 종료" if st.session_state[container_key] else "이미지 정리"
+                                if st.button(btn_label, key=f"toggle_reorder_{topic_name}_{term}"):
+                                    st.session_state[container_key] = not st.session_state[container_key]
+                                    st.rerun()
+                                
+                                # 순서 변경 모드일 때
+                                if st.session_state[container_key]:
+                                    # 현재 순서 저장
+                                    reorder_key = f"reorder_list_{domain}_{topic_name}_{term}"
+                                    if reorder_key not in st.session_state:
+                                        st.session_state[reorder_key] = image_paths.copy()
+                                    
+                                    # 이미지 표시 및 순서 변경 UI
+                                    st.write("이미지를 각각 정리할 수 있습니다. 순서 변경은 ↑↓ 버튼, 삭제는 X 버튼을 사용하세요.")
+                                    
+                                    # 이미지 리스트가 비었는지 확인
+                                    if not st.session_state[reorder_key]:
+                                        st.warning("모든 이미지가 삭제되었습니다.")
+                                    else:
+                                        # 현재 이미지 목록에서 선택하여 위/아래로 이동 또는 삭제
+                                        for i, img_path in enumerate(st.session_state[reorder_key].copy()):
+                                            col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
+                                            
+                                            # 이미지 표시
+                                            with col1:
+                                                try:
+                                                    with open(img_path, "rb") as img_file:
+                                                        img_bytes = img_file.read()
+                                                        st.image(img_bytes, caption=f"순서: {i+1}", width=150)
+                                                except Exception as e:
+                                                    st.error(f"이미지 로드 오류: {str(e)}")
+                                            
+                                            # 위로 이동 버튼
+                                            with col2:
+                                                if i > 0:  # 첫 번째 이미지가 아닌 경우에만
+                                                    if st.button("↑", key=f"up_{topic_name}_{term}_{i}"):
+                                                        # 이미지 순서 위로 이동
+                                                        current_list = st.session_state[reorder_key]
+                                                        current_list[i], current_list[i-1] = current_list[i-1], current_list[i]
+                                                        st.session_state[reorder_key] = current_list
+                                                        st.rerun()
+                                            
+                                            # 아래로 이동 버튼
+                                            with col3:
+                                                if i < len(st.session_state[reorder_key]) - 1:  # 마지막 이미지가 아닌 경우에만
+                                                    if st.button("↓", key=f"down_{topic_name}_{term}_{i}"):
+                                                        # 이미지 순서 아래로 이동
+                                                        current_list = st.session_state[reorder_key]
+                                                        current_list[i], current_list[i+1] = current_list[i+1], current_list[i]
+                                                        st.session_state[reorder_key] = current_list
+                                                        st.rerun()
+                                            
+                                            # 삭제 버튼 추가
+                                            with col4:
+                                                if st.button("❌", key=f"delete_img_{topic_name}_{term}_{i}"):
+                                                    # 이미지 삭제
+                                                    current_list = st.session_state[reorder_key]
+                                                    removed_path = current_list.pop(i)
+                                                    st.session_state[reorder_key] = current_list
+                                                    # 파일 시스템에서 바로 삭제하지 않고, 변경 저장 시에만 적용
+                                                    st.success(f"이미지가 목록에서 제거되었습니다. '변경 저장하기' 클릭 시 실제로 삭제됩니다.")
+                                                    st.rerun()
+                                    
+                                    # 변경 저장 및 취소 버튼
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if st.button("변경 저장하기", key=f"save_order_{topic_name}_{term}"):
+                                            # 삭제된 이미지 처리
+                                            deleted_images = []
+                                            for img_path in image_paths:
+                                                if img_path not in st.session_state[reorder_key]:
+                                                    deleted_images.append(img_path)
+                                            
+                                            # 파일 시스템에서 삭제
+                                            for img_path in deleted_images:
+                                                if os.path.exists(img_path):
+                                                    try:
+                                                        os.unlink(img_path)
+                                                    except Exception as e:
+                                                        st.error(f"이미지 삭제 중 오류 발생: {e}")
+                                            
+                                            # 남은 이미지 순서 변경 저장
+                                            if st.session_state[reorder_key]:
+                                                success = reorder_images(
+                                                    domain,
+                                                    topic_name,
+                                                    term,
+                                                    st.session_state[reorder_key]
+                                                )
+                                                
+                                                if success:
+                                                    if deleted_images:
+                                                        st.success(f"{len(deleted_images)}개 이미지가 삭제되고 순서가 변경되었습니다.")
+                                                    else:
+                                                        st.success("이미지 순서가 변경되었습니다.")
+                                            else:
+                                                st.success("모든 이미지가 삭제되었습니다.")
+                                            
+                                            # 순서 변경 모드 종료 및 세션 상태 초기화
+                                            st.session_state[container_key] = False
+                                            if reorder_key in st.session_state:
+                                                del st.session_state[reorder_key]
+                                            time.sleep(1)
+                                            st.rerun()
+                                    
+                                    with col2:
+                                        if st.button("취소", key=f"cancel_order_{topic_name}_{term}"):
+                                            # 순서 변경 모드 종료 및 세션 상태 초기화
+                                            st.session_state[container_key] = False
+                                            if reorder_key in st.session_state:
+                                                del st.session_state[reorder_key]
+                                            st.rerun()
+                            
+                            # 일반 모드에서 이미지 표시
+                            container_key = f"reorder_{domain}_{topic_name}_{term}"
+                            if not st.session_state.get(container_key, False):
+                                # 이미지 표시
+                                for img_path in image_paths:
+                                    try:
+                                        # 이미지를 base64로 인코딩하여 HTML로 표시
+                                        with open(img_path, "rb") as img_file:
+                                            encoded_img = base64.b64encode(img_file.read()).decode()
+                                            st.markdown(f"""
+                                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
+                                                onclick="openImageModal(this.src)">
+                                            """, unsafe_allow_html=True)
+                                    except Exception as e:
+                                        st.error(f"이미지 로드 중 오류: {str(e)}")
                             
                             # 이미지 삭제 버튼
                             if st.button("모든 이미지 삭제", key=f"del_img_{topic_name}_{term}", type="secondary"):
@@ -1654,9 +1847,12 @@ def manage_flashcards(domain):
                                     time.sleep(1)
                                     st.rerun()
                             
-                            # 이미지 업데이트
+                            # 이미지 추가 영역
                             st.markdown("#### 이미지 추가")
-                            additional_images = st.file_uploader("새 이미지 업로드 (여러 이미지 선택 가능)", type=["png", "jpg", "jpeg", "gif"], accept_multiple_files=True, key=f"update_images_{topic_name}_{term}")
+                            additional_images = st.file_uploader("새 이미지 업로드 (여러 이미지 선택 가능)", 
+                                                                type=["png", "jpg", "jpeg", "gif"], 
+                                                                accept_multiple_files=True,
+                                                                key=f"update_images_{topic_name}_{term}")
                             if additional_images:
                                 for img in additional_images:
                                     try:
@@ -1668,7 +1864,7 @@ def manage_flashcards(domain):
                                     except Exception as e:
                                         st.error(f"이미지 표시 중 오류 발생: {str(e)}")
                                 
-                                if st.button("이미지 추가", key=f"add_img_btn_{topic_name}_{term}"):
+                                if st.button("이미지 추가", key=f"add_additional_img_{topic_name}_{term}"):
                                     images_saved = 0
                                     for img in additional_images:
                                         try:
