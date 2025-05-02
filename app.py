@@ -2006,7 +2006,11 @@ def study_mode(domain):
                         with open(img_path, "rb") as img_file:
                             encoded_img = base64.b64encode(img_file.read()).decode()
                             st.markdown(f"""
+<<<<<<< HEAD
                             <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%"
+=======
+                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
+>>>>>>> 225f98ea8e732ace574241a623d9dc352272b440
                                 onclick="openImageModal(this.src)">
                             """, unsafe_allow_html=True)
                     except Exception as e:
@@ -2289,6 +2293,7 @@ def all_domains_study_mode():
         st.warning("학습할 도메인을 선택해주세요.")
         return
     
+<<<<<<< HEAD
     # 도메인:토픽 형태로 모든 플래시카드 표시 및 선택 가능하도록 추가
     domain_topic_options = []
     domain_topic_map = {}
@@ -2743,6 +2748,418 @@ def all_domains_quiz_mode():
                         st.session_state.all_quiz_completed = True
                     st.rerun()
     
+=======
+    # 선택된 도메인에서 카드 가져오기
+    all_cards = []
+    for domain in selected_domains:
+        topics = data[domain]
+        for topic, terms in topics.items():
+            for term, card_data in terms.items():
+                all_cards.append({
+                    "domain": domain,
+                    "topic": topic, 
+                    "term": term, 
+                    "card_data": card_data
+                })
+    
+    if not all_cards:
+        st.warning("선택한 도메인에 플래시카드가 없습니다.")
+        return
+    
+    st.write(f"총 {len(all_cards)}개의 플래시카드가 있습니다.")
+    
+    # 세션 상태 초기화
+    if "all_study_cards" not in st.session_state:
+        st.session_state.all_study_cards = all_cards.copy()
+        random.shuffle(st.session_state.all_study_cards)  # 초기에 카드 섞기
+        st.session_state.all_current_card_index = 0
+        # 기본값을 True로 설정하여 처음부터 모든 내용이 보이도록 함
+        st.session_state.all_study_show_content = True
+        st.session_state.all_study_show_keyword = True
+        st.session_state.all_study_show_rhyming = True
+    
+    # 카드가 변경되었는지 확인 (도메인 선택 변경시)
+    current_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in all_cards)
+    session_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in st.session_state.all_study_cards)
+    
+    if current_cards_ids != session_cards_ids:
+        st.session_state.all_study_cards = all_cards.copy()
+        st.session_state.all_current_card_index = 0
+        # 토픽이 변경되어도 보기 상태 유지
+        st.session_state.all_study_show_content = True
+        st.session_state.all_study_show_keyword = True
+        st.session_state.all_study_show_rhyming = True
+    
+    # 네비게이션 및 컨트롤 버튼
+    nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+    
+    with nav_col1:
+        if st.button("이전", key="prev_all_card"):
+            st.session_state.all_current_card_index = (st.session_state.all_current_card_index - 1) % len(st.session_state.all_study_cards)
+            # 이전 카드로 이동해도 보기 상태 유지
+            st.rerun()
+    
+    with nav_col2:
+        if st.button("모두 가리기", key="hide_all_all"):
+            st.session_state.all_study_show_content = False
+            st.session_state.all_study_show_keyword = False
+            st.session_state.all_study_show_rhyming = False
+            st.rerun()
+    
+    with nav_col3:
+        if st.button("모두 보기", key="show_all_all"):
+            st.session_state.all_study_show_content = True
+            st.session_state.all_study_show_keyword = True
+            st.session_state.all_study_show_rhyming = True
+            st.rerun()
+    
+    with nav_col4:
+        if st.button("다음", key="next_all_card"):
+            st.session_state.all_current_card_index = (st.session_state.all_current_card_index + 1) % len(st.session_state.all_study_cards)
+            # 다음 카드로 이동해도 보기 상태 유지
+            st.rerun()
+            
+    with nav_col5:
+        # 카드 섞기 버튼
+        if st.button("카드 섞기", key="all_study_shuffle_button"):
+            shuffled_cards = all_cards.copy()
+            random.shuffle(shuffled_cards)
+            
+            # 세션 상태 업데이트
+            st.session_state.all_study_cards = shuffled_cards
+            st.session_state.all_current_card_index = 0
+            # 카드 섞기 후에도 보기 상태 유지
+            st.session_state.all_study_show_content = True
+            st.session_state.all_study_show_keyword = True
+            st.session_state.all_study_show_rhyming = True
+            
+            st.success("카드가 섞였습니다!")
+            st.rerun()
+    
+    # 플래시카드 보여주기
+    if st.session_state.all_study_cards:
+        current_card = st.session_state.all_study_cards[st.session_state.all_current_card_index]
+        
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            st.subheader(f"도메인: {current_card['domain']} / 토픽: {current_card['topic']}")
+        with col2:
+            st.write(f"{st.session_state.all_current_card_index + 1}/{len(st.session_state.all_study_cards)}")
+        
+        # 카드 컨테이너 분할 (텍스트 / 이미지)
+        text_col, image_col = st.columns([2, 3])
+        
+        with text_col:
+            # 카드 표시
+            st.markdown(f"""
+            <div class="card">
+                <h2>{current_card['term']}</h2>
+                <p>정의/개념</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 핵심키워드 표시 - 버튼 텍스트 변경
+            keyword_button_text = "핵심키워드 가리기" if st.session_state.all_study_show_keyword else "핵심키워드 보기"
+            if st.button(keyword_button_text, key="all_study_keyword_btn"):
+                st.session_state.all_study_show_keyword = not st.session_state.all_study_show_keyword
+                st.rerun()
+                
+            if st.session_state.all_study_show_keyword:
+                st.markdown(f"""
+                <div class="card">
+                    <h2>{current_card['card_data'].get('keyword', '정보 없음')}</h2>
+                    <p>핵심키워드</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # 두음 표시 - 버튼 텍스트 변경
+            rhyming_button_text = "두음 가리기" if st.session_state.all_study_show_rhyming else "두음 보기"
+            if st.button(rhyming_button_text, key="all_study_rhyming_btn"):
+                st.session_state.all_study_show_rhyming = not st.session_state.all_study_show_rhyming
+                st.rerun()
+                
+            if st.session_state.all_study_show_rhyming:
+                st.markdown(f"""
+                <div class="card">
+                    <h2>{current_card['card_data'].get('rhyming', '정보 없음')}</h2>
+                    <p>두음</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            # 내용 표시 - 버튼 텍스트 변경
+            content_button_text = "내용 가리기" if st.session_state.all_study_show_content else "내용 보기"
+            if st.button(content_button_text, key="all_study_content_btn"):
+                st.session_state.all_study_show_content = not st.session_state.all_study_show_content
+                st.rerun()
+                
+            if st.session_state.all_study_show_content:
+                st.markdown(f"""
+                <div class="card">
+                    <h2>{current_card['card_data']['content']}</h2>
+                    <p>내용</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with image_col:
+            # 이미지 표시 (정의/개념을 기준으로 이미지 경로 구성)
+            domain = current_card['domain']  # current_card에서 domain 가져오기
+            term = current_card['term']
+            image_paths = get_all_image_paths(domain, current_card['topic'], term)
+            if image_paths:
+                for img_path in image_paths:
+                    try:
+                        # 이미지를 base64로 인코딩하여 HTML로 표시
+                        with open(img_path, "rb") as img_file:
+                            encoded_img = base64.b64encode(img_file.read()).decode()
+                            st.markdown(f"""
+                            <img src="data:image/png;base64,{encoded_img}" class="clickable-image" width="100%" 
+                                onclick="openImageModal(this.src)">
+                            """, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"이미지 로드 중 오류: {str(e)}")
+            else:
+                st.info("이 카드에는 이미지가 없습니다.")
+
+# 전체 도메인 퀴즈 모드
+def all_domains_quiz_mode():
+    import random
+    st.header("전체 도메인 퀴즈 모드")
+    
+    data = load_data()
+    domains = list(data.keys())
+    
+    if not domains:
+        st.info("플래시카드가 없습니다. 플래시카드를 추가한 후 퀴즈를 풀어보세요!")
+        return
+    
+    # 도메인 선택
+    selected_domains = st.multiselect("퀴즈 도메인 선택", domains, default=domains)
+    
+    if not selected_domains:
+        st.warning("퀴즈를 볼 도메인을 선택해주세요.")
+        return
+    
+    # 선택된 도메인에서 카드 가져오기
+    all_cards = []
+    for domain in selected_domains:
+        topics = data[domain]
+        for topic, terms in topics.items():
+            for term, card_data in terms.items():
+                all_cards.append({
+                    "domain": domain,
+                    "topic": topic, 
+                    "term": term, 
+                    "card_data": card_data
+                })
+    
+    if not all_cards:
+        st.warning("선택한 도메인에 플래시카드가 없습니다.")
+        return
+    
+    # 문제 수 선택
+    max_questions = min(100, len(all_cards))
+    
+    # 카드가 1개일 경우 슬라이더를 사용하지 않음
+    if max_questions == 1:
+        quiz_total = 1
+        st.info("플래시카드가 1개뿐입니다. 1문제로 퀴즈가 진행됩니다.")
+    else:
+        default_value = min(10, max_questions)
+        quiz_total = st.slider("퀴즈 문제 수", 1, max_questions, default_value)
+    
+    # 카드 섞기 버튼
+    if st.button("카드 섞기", key="all_quiz_shuffle_cards"):
+        shuffled_cards = all_cards.copy()
+        random.shuffle(shuffled_cards)
+        
+        # 세션 상태 초기화 및 섞인 카드 설정
+        st.session_state.all_quiz_cards = shuffled_cards
+        st.session_state.all_current_quiz_index = 0
+        st.session_state.all_quiz_score = 0
+        st.session_state.all_quiz_total = quiz_total
+        st.session_state.all_user_answer = ""
+        st.session_state.all_quiz_answer_checked = False
+        st.session_state.all_quiz_completed = False
+        st.session_state.all_show_quiz_hint = False
+        st.session_state.all_show_quiz_keyword = False
+        st.session_state.all_show_quiz_rhyming = False
+        st.session_state.all_show_quiz_content = False
+        st.session_state.all_show_quiz_image = False  # 이미지는 처음에 보이지 않도록 설정
+    
+    # 세션 상태 초기화
+    if "all_quiz_cards" not in st.session_state or st.button("새 퀴즈 시작"):
+        st.session_state.all_quiz_cards = all_cards.copy()
+        random.shuffle(st.session_state.all_quiz_cards)
+        st.session_state.all_current_quiz_index = 0
+        st.session_state.all_quiz_score = 0
+        st.session_state.all_quiz_total = quiz_total
+        st.session_state.all_user_answer = ""
+        st.session_state.all_quiz_answer_checked = False
+        st.session_state.all_quiz_completed = False
+        st.session_state.all_show_quiz_hint = False
+        st.session_state.all_show_quiz_keyword = False
+        st.session_state.all_show_quiz_rhyming = False
+        st.session_state.all_show_quiz_content = False
+        st.session_state.all_show_quiz_image = False  # 이미지는 처음에 보이지 않도록 설정
+    
+    # 퀴즈가 완료되었는지 확인
+    if st.session_state.all_quiz_completed:
+        st.success(f"퀴즈 완료! 점수: {st.session_state.all_quiz_score}/{st.session_state.all_quiz_total}")
+        if st.button("다시 풀기"):
+            st.session_state.all_quiz_cards = all_cards.copy()
+            random.shuffle(st.session_state.all_quiz_cards)
+            st.session_state.all_current_quiz_index = 0
+            st.session_state.all_quiz_score = 0
+            st.session_state.all_quiz_total = quiz_total
+            st.session_state.all_user_answer = ""
+            st.session_state.all_quiz_answer_checked = False
+            st.session_state.all_quiz_completed = False
+            st.session_state.all_show_quiz_hint = False
+            st.session_state.all_show_quiz_keyword = False
+            st.session_state.all_show_quiz_rhyming = False
+            st.session_state.all_show_quiz_content = False
+            st.session_state.all_show_quiz_image = False
+            st.rerun()
+        return
+    
+    # 현재 퀴즈 카드
+    current_card = st.session_state.all_quiz_cards[st.session_state.all_current_quiz_index]
+    
+    # 퀴즈 타입 설정 - 항상 도메인과 토픽 보여주고 정의/개념, 특징, 내용 묻기
+    st.markdown(f"""
+    <div class='card'>
+        <h3>문제 {st.session_state.all_current_quiz_index + 1}/{st.session_state.all_quiz_total}</h3>
+        <div style="margin-bottom: 10px;">
+            <span style="font-size: 14px; color: #666;">도메인: {current_card['domain']}</span><br/>
+            <span style="font-size: 24px; font-weight: bold; color: #1E3A8A;">토픽: {current_card['topic']}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 컨텐츠 열 분할 (퀴즈 / 이미지)
+    quiz_col, image_col = st.columns([2, 3])
+    
+    with quiz_col:
+        st.markdown(f"""
+        <div class='concept-card'>
+            <h2>{current_card['topic']}</h2>
+            <p>위 토픽에 해당하는 정의/개념은 무엇인가요?</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 힌트 버튼들
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            # 정의/개념 힌트
+            if st.button("정의/개념 힌트", key="all_quiz_term_btn"):
+                st.session_state.all_show_quiz_hint = not st.session_state.all_show_quiz_hint
+                st.rerun()
+        
+        with col2:
+            # 핵심키워드 힌트
+            if st.button("핵심키워드 힌트", key="all_quiz_keyword_btn"):
+                st.session_state.all_show_quiz_keyword = not st.session_state.all_show_quiz_keyword
+                st.rerun()
+        
+        with col3:
+            # 두음 힌트
+            if st.button("두음 힌트", key="all_quiz_rhyming_btn"):
+                st.session_state.all_show_quiz_rhyming = not st.session_state.all_show_quiz_rhyming
+                st.rerun()
+            
+        with col4:
+            # 내용 힌트
+            if st.button("내용 힌트", key="all_quiz_content_btn"):
+                st.session_state.all_show_quiz_content = not st.session_state.all_show_quiz_content
+                st.rerun()
+        
+        with col5:
+            # 이미지 힌트
+            if st.button("이미지 보기", key="all_quiz_image_btn"):
+                st.session_state.all_show_quiz_image = not st.session_state.all_show_quiz_image
+                st.rerun()
+        
+        # 힌트 표시 영역
+        hint_displayed = False
+        
+        # 정의/개념 힌트
+        if st.session_state.all_show_quiz_hint:
+            hint_displayed = True
+            with st.expander("정의/개념 힌트", expanded=True):
+                st.markdown(f"**정의/개념:** {current_card['term']}")
+        
+        # 핵심키워드 힌트
+        if st.session_state.all_show_quiz_keyword:
+            hint_displayed = True
+            with st.expander("핵심키워드 힌트", expanded=True):
+                st.markdown(f"**핵심키워드:** {current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}")
+        
+        # 두음 힌트
+        if st.session_state.all_show_quiz_rhyming:
+            hint_displayed = True
+            with st.expander("두음 힌트", expanded=True):
+                st.markdown(f"**두음:** {current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}")
+                
+        # 내용 힌트
+        if st.session_state.all_show_quiz_content:
+            hint_displayed = True
+            with st.expander("내용 힌트", expanded=True):
+                st.markdown(f"**내용:** {current_card['card_data']['content']}")
+        
+        # 사용자 답변 입력
+        if not st.session_state.all_quiz_answer_checked:
+            user_answer = st.text_area("답변", key="all_answer_input", height=100)
+            if st.button("정답 확인"):
+                st.session_state.all_user_answer = user_answer
+                st.session_state.all_quiz_answer_checked = True
+                st.rerun()
+        else:
+            st.text_area("답변", value=st.session_state.all_user_answer, disabled=True, height=100)
+            
+            # 정답 표시
+            st.markdown("### 정답")
+            # 정의/개념 정답
+            st.markdown(f"**정의/개념:** {current_card['term']}")
+            # 핵심키워드 정답
+            st.markdown(f"**핵심키워드:** {current_card['card_data'].get('keyword', '핵심키워드 정보가 없습니다.')}")
+            # 두음 정답
+            st.markdown(f"**두음:** {current_card['card_data'].get('rhyming', '두음 정보가 없습니다.')}")
+            # 내용 정답
+            st.markdown(f"**내용:** {current_card['card_data']['content']}")
+            
+            # 자가 채점
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("맞았어요"):
+                    st.session_state.all_quiz_score += 1
+                    if st.session_state.all_current_quiz_index + 1 < st.session_state.all_quiz_total:
+                        st.session_state.all_current_quiz_index += 1
+                        st.session_state.all_quiz_answer_checked = False
+                        st.session_state.all_show_quiz_hint = False
+                        st.session_state.all_show_quiz_keyword = False
+                        st.session_state.all_show_quiz_rhyming = False
+                        st.session_state.all_show_quiz_content = False
+                        st.session_state.all_show_quiz_image = False
+                    else:
+                        st.session_state.all_quiz_completed = True
+                    st.rerun()
+            
+            with col2:
+                if st.button("틀렸어요"):
+                    if st.session_state.all_current_quiz_index + 1 < st.session_state.all_quiz_total:
+                        st.session_state.all_current_quiz_index += 1
+                        st.session_state.all_quiz_answer_checked = False
+                        st.session_state.all_show_quiz_hint = False
+                        st.session_state.all_show_quiz_keyword = False
+                        st.session_state.all_show_quiz_rhyming = False
+                        st.session_state.all_show_quiz_content = False
+                        st.session_state.all_show_quiz_image = False
+                    else:
+                        st.session_state.all_quiz_completed = True
+                    st.rerun()
+    
+>>>>>>> 225f98ea8e732ace574241a623d9dc352272b440
     with image_col:
         # 이미지는 힌트 버튼을 누른 경우에만 표시
         if st.session_state.all_show_quiz_image:
