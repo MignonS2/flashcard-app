@@ -1758,8 +1758,96 @@ def manage_flashcards(domain):
     # 기존 플래시카드 보기
     if topics:
         st.subheader("기존 플래시카드")
+        
+        # 검색 및 정렬 기능 추가
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            search_term = st.text_input("🔍 토픽 또는 용어 검색", key=f"search_{domain}")
+        
+        with col2:
+            sort_options = ["알파벳순", "카드개수순", "최근 수정순"]
+            sort_option = st.selectbox("정렬", options=sort_options, key=f"sort_{domain}")
+        
+        sort_direction = st.radio("정렬 방향", ["오름차순", "내림차순"], horizontal=True, key=f"sort_dir_{domain}")
+        
+        # 토픽 정보 수집 및 정렬
+        topic_info = []
         for topic_name, cards in topics.items():
-            with st.expander(f"토픽: {topic_name} ({len(cards)}개)"):
+            # 카드 개수
+            card_count = len(cards)
+            
+            # 최종 수정일 계산
+            try:
+                if st.session_state.username:
+                    topic_folder = os.path.join(get_user_image_folder(st.session_state.username), domain, topic_name)
+                    if os.path.exists(topic_folder):
+                        modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(topic_folder))
+                    else:
+                        modified_time = datetime.datetime.now()
+                else:
+                    modified_time = datetime.datetime.now()
+            except:
+                modified_time = datetime.datetime.now()
+            
+            # 검색어 필터링
+            if search_term:
+                search_term_lower = search_term.lower()
+                # 토픽 이름에 검색어가 포함되어 있는지 확인
+                if search_term_lower in topic_name.lower():
+                    topic_info.append({
+                        "name": topic_name,
+                        "cards": cards,
+                        "card_count": card_count,
+                        "modified_time": modified_time
+                    })
+                    continue
+                
+                # 토픽 내의 카드 중에 검색어가 포함된 카드가 있는지 확인
+                for term, card_data in cards.items():
+                    if (search_term_lower in term.lower() or 
+                        search_term_lower in card_data.get("keyword", "").lower() or 
+                        search_term_lower in card_data.get("content", "").lower()):
+                        topic_info.append({
+                            "name": topic_name,
+                            "cards": cards,
+                            "card_count": card_count,
+                            "modified_time": modified_time
+                        })
+                        break
+            else:
+                topic_info.append({
+                    "name": topic_name,
+                    "cards": cards,
+                    "card_count": card_count,
+                    "modified_time": modified_time
+                })
+        
+        # 정렬
+        if sort_option == "알파벳순":
+            topic_info.sort(key=lambda x: x["name"])
+        elif sort_option == "카드개수순":
+            topic_info.sort(key=lambda x: x["card_count"])
+        elif sort_option == "최근 수정순":
+            topic_info.sort(key=lambda x: x["modified_time"])
+        
+        # 내림차순이면 리스트 뒤집기
+        if sort_direction == "내림차순":
+            topic_info.reverse()
+        
+        # 필터링 결과 메시지
+        if search_term:
+            st.write(f"검색 결과: {len(topic_info)}개 토픽")
+            if len(topic_info) == 0:
+                st.info(f"'{search_term}'에 대한 검색 결과가 없습니다.")
+        
+        # 토픽 목록 표시
+        for topic_item in topic_info:
+            topic_name = topic_item["name"]
+            cards = topic_item["cards"]
+            card_count = topic_item["card_count"]
+            modified_time = topic_item["modified_time"].strftime("%Y-%m-%d %H:%M")
+            
+            with st.expander(f"토픽: {topic_name} ({len(cards)}개) - 최종 수정: {modified_time}"):
                 # 토픽 제목과 삭제 버튼 레이아웃 변경
                 col1, col2 = st.columns([5, 1])
                 
