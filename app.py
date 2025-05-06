@@ -280,6 +280,11 @@ def save_image(image_file, domain, topic, term):
         st.error(traceback.format_exc())
         return None
 
+# 도메인 목록 가져오기 함수 추가
+def get_domains():
+    data = load_data()
+    return list(data.keys())
+
 # 이미지 경로 가져오기 (단일 이미지 - 이전 버전과의 호환성 유지)
 def get_image_path(domain, topic, term):
     image_paths = get_all_image_paths(domain, topic, term)
