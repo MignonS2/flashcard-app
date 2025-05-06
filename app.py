@@ -1536,7 +1536,8 @@ def main():
                 st.header("새 플래시카드 추가")
                 
                 # 도메인 선택
-                all_domains = get_domains()
+                data = load_data()
+                all_domains = list(data.keys())
                 domain = st.selectbox("도메인 선택", options=all_domains, key="add_domain_select")
                 
                 # 토픽 입력
