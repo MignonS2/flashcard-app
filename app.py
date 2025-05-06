@@ -2255,13 +2255,60 @@ def study_mode(domain):
         st.info(f"{domain} 도메인에 아직 플래시카드가 없습니다. 플래시카드를 추가한 후 학습해보세요!")
         return
     
-    # 토픽 선택
+    # 토픽 선택 - 클릭 가능한 버튼으로 변경
     all_topics = list(topics.keys())
-    selected_topics = st.multiselect("학습할 토픽 선택", all_topics, default=all_topics)
+    
+    # 멀티셀렉트 대신 버튼 그리드 표시
+    st.markdown("### 학습할 토픽 선택")
+    
+    # 버튼을 그리드로 배치하기 위한 열 생성 (한 행에 3개씩)
+    topic_cols = st.columns(3)
+    selected_topics = []
+    
+    # 토픽별 버튼 생성
+    for i, topic in enumerate(all_topics):
+        col_idx = i % 3
+        with topic_cols[col_idx]:
+            # 토픽 버튼에 카드 개수 표시
+            card_count = len(topics[topic])
+            if st.button(f"{topic} ({card_count}개)", key=f"topic_btn_{topic}"):
+                selected_topics = [topic]  # 선택된 토픽만 저장
+                # 토픽 선택 시 세션 상태 초기화
+                if "study_cards" in st.session_state:
+                    del st.session_state.study_cards
+                    del st.session_state.current_card_index
+                    del st.session_state.study_show_content
+                    del st.session_state.study_show_keyword
+                    del st.session_state.study_show_rhyming
+    
+    # 모든 토픽 선택 버튼 추가
+    st.markdown("---")
+    if st.button("모든 토픽 학습하기", key="all_topics_btn"):
+        selected_topics = all_topics
+        if "study_cards" in st.session_state:
+            del st.session_state.study_cards
+            del st.session_state.current_card_index
+            del st.session_state.study_show_content
+            del st.session_state.study_show_keyword
+            del st.session_state.study_show_rhyming
+    
+    # 기존 멀티셀렉트도 유지 (고급 선택 옵션으로)
+    with st.expander("고급 토픽 선택 (다중 선택)"):
+        multi_selected_topics = st.multiselect("학습할 토픽 선택", all_topics, default=[])
+        if st.button("선택한 토픽 학습하기", key="multi_selected_btn"):
+            if multi_selected_topics:
+                selected_topics = multi_selected_topics
+                if "study_cards" in st.session_state:
+                    del st.session_state.study_cards
+                    del st.session_state.current_card_index
+                    del st.session_state.study_show_content
+                    del st.session_state.study_show_keyword
+                    del st.session_state.study_show_rhyming
     
     if not selected_topics:
-        st.warning("학습할 토픽을 선택해주세요.")
-        return
+        if "study_cards" not in st.session_state:
+            st.warning("학습할 토픽을 선택해주세요.")
+            return
     
     # 선택된 토픽에서 카드 가져오기
     all_cards = []
@@ -2270,8 +2317,9 @@ def study_mode(domain):
             all_cards.append({"topic": topic, "term": term, "card_data": card_data})
     
     if not all_cards:
-        st.warning("선택한 토픽에 플래시카드가 없습니다.")
-        return
+        if "study_cards" not in st.session_state:
+            st.warning("선택한 토픽에 플래시카드가 없습니다.")
+            return
     
     st.write(f"총 {len(all_cards)}개의 플래시카드가 있습니다.")
     
@@ -2286,16 +2334,17 @@ def study_mode(domain):
         st.session_state.study_show_rhyming = True
     
     # 카드가 변경되었는지 확인 (토픽 선택 변경시)
-    current_cards_ids = set(f"{card['topic']}_{card['term']}" for card in all_cards)
-    session_cards_ids = set(f"{card['topic']}_{card['term']}" for card in st.session_state.study_cards)
-    
-    if current_cards_ids != session_cards_ids:
-        st.session_state.study_cards = all_cards.copy()
-        st.session_state.current_card_index = 0
-        # 토픽이 변경되어도 보기 상태 유지
-        st.session_state.study_show_content = True
-        st.session_state.study_show_keyword = True
-        st.session_state.study_show_rhyming = True
+    if all_cards:
+        current_cards_ids = set(f"{card['topic']}_{card['term']}" for card in all_cards)
+        session_cards_ids = set(f"{card['topic']}_{card['term']}" for card in st.session_state.study_cards)
+        
+        if current_cards_ids != session_cards_ids:
+            st.session_state.study_cards = all_cards.copy()
+            st.session_state.current_card_index = 0
+            # 토픽이 변경되어도 보기 상태 유지
+            st.session_state.study_show_content = True
+            st.session_state.study_show_keyword = True
+            st.session_state.study_show_rhyming = True
     
     # 네비게이션 및 컨트롤 버튼
     nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
@@ -2802,15 +2851,102 @@ def all_domains_study_mode():
             domain_topic_options.append(option)
             domain_topic_map[option] = {"domain": domain, "topic": topic}
     
-    selected_domain_topics = st.multiselect(
-        "학습할 도메인:토픽 선택 (개별 선택 가능)",
-        domain_topic_options,
-        default=domain_topic_options
-    )
+    # 도메인:토픽 옵션을 클릭 가능한 버튼으로 표시
+    st.markdown("### 학습할 도메인:토픽 선택")
+    
+    # 도메인:토픽 버튼 스타일 추가
+    st.markdown("""
+    <style>
+    .domain-topic-btn {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        text-align: left !important;
+        height: auto !important;
+        min-height: 38px !important;
+        padding: 8px 12px !important;
+        margin-bottom: 8px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 버튼을 그리드로 배치하기 위한 열 생성 (한 행에 2개씩)
+    selected_domain_topics = []
+    
+    # 토픽 리스트에서 선택한 항목이 있는지 확인
+    if "study_selected_domain_topic" in st.session_state:
+        selected_domain_topic = st.session_state.study_selected_domain_topic
+        # 선택한 항목이 현재 표시된 옵션 목록에 있는지 확인
+        if selected_domain_topic in domain_topic_options:
+            selected_domain_topics = [selected_domain_topic]
+            # 사용한 선택 정보는 삭제
+            del st.session_state.study_selected_domain_topic
+    
+    # 도메인별로 그룹화하여 표시
+    domain_groups = {}
+    for option in domain_topic_options:
+        domain = domain_topic_map[option]["domain"]
+        if domain not in domain_groups:
+            domain_groups[domain] = []
+        domain_groups[domain].append(option)
+    
+    # 각 도메인 그룹을 확장 가능한 섹션에 표시
+    for domain, options in domain_groups.items():
+        with st.expander(f"{domain} ({len(options)}개 토픽)", expanded=True):
+            # 각 토픽을 2열 그리드로 표시
+            for i in range(0, len(options), 2):
+                cols = st.columns(2)
+                for j in range(2):
+                    idx = i + j
+                    if idx < len(options):
+                        option = options[idx]
+                        topic = domain_topic_map[option]["topic"]
+                        # 해당 토픽의 카드 개수 계산
+                        card_count = len(data[domain][topic])
+                        
+                        with cols[j]:
+                            if st.button(f"{option} ({card_count}개)", key=f"dt_btn_{option}", use_container_width=True):
+                                selected_domain_topics = [option]  # 선택된 항목만 저장
+                                # 선택 시 세션 상태 초기화
+                                if "all_study_cards" in st.session_state:
+                                    del st.session_state.all_study_cards
+                                    del st.session_state.all_current_card_index
+                                    del st.session_state.all_study_show_content
+                                    del st.session_state.all_study_show_keyword
+                                    del st.session_state.all_study_show_rhyming
+    
+    # 모든 토픽 선택 버튼 추가
+    st.markdown("---")
+    if st.button("모든 도메인:토픽 학습하기", key="all_domain_topics_btn"):
+        selected_domain_topics = domain_topic_options
+        if "all_study_cards" in st.session_state:
+            del st.session_state.all_study_cards
+            del st.session_state.all_current_card_index
+            del st.session_state.all_study_show_content
+            del st.session_state.all_study_show_keyword
+            del st.session_state.all_study_show_rhyming
+    
+    # 기존 멀티셀렉트도 유지 (고급 선택 옵션으로)
+    with st.expander("고급 도메인:토픽 선택 (다중 선택)"):
+        multi_selected_domain_topics = st.multiselect(
+            "학습할 도메인:토픽 선택",
+            domain_topic_options,
+            default=[]
+        )
+        
+        if st.button("선택한 도메인:토픽 학습하기", key="multi_selected_dt_btn"):
+            if multi_selected_domain_topics:
+                selected_domain_topics = multi_selected_domain_topics
+                if "all_study_cards" in st.session_state:
+                    del st.session_state.all_study_cards
+                    del st.session_state.all_current_card_index
+                    del st.session_state.all_study_show_content
+                    del st.session_state.all_study_show_keyword
+                    del st.session_state.all_study_show_rhyming
     
     if not selected_domain_topics:
-        st.warning("학습할 도메인:토픽을 선택해주세요.")
-        return
+        if "all_study_cards" not in st.session_state:
+            st.warning("학습할 도메인:토픽을 선택해주세요.")
+            return
     
     # 선택된 도메인:토픽에서 카드 가져오기
     all_cards = []
@@ -2827,8 +2963,9 @@ def all_domains_study_mode():
             })
     
     if not all_cards:
-        st.warning("선택한 도메인:토픽에 플래시카드가 없습니다.")
-        return
+        if "all_study_cards" not in st.session_state:
+            st.warning("선택한 도메인:토픽에 플래시카드가 없습니다.")
+            return
     
     st.write(f"총 {len(all_cards)}개의 플래시카드가 있습니다.")
     
@@ -2843,16 +2980,17 @@ def all_domains_study_mode():
         st.session_state.all_study_show_rhyming = True
     
     # 카드가 변경되었는지 확인 (도메인 선택 변경시)
-    current_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in all_cards)
-    session_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in st.session_state.all_study_cards)
-    
-    if current_cards_ids != session_cards_ids:
-        st.session_state.all_study_cards = all_cards.copy()
-        st.session_state.all_current_card_index = 0
-        # 토픽이 변경되어도 보기 상태 유지
-        st.session_state.all_study_show_content = True
-        st.session_state.all_study_show_keyword = True
-        st.session_state.all_study_show_rhyming = True
+    if all_cards:
+        current_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in all_cards)
+        session_cards_ids = set(f"{card['domain']}_{card['topic']}_{card['term']}" for card in st.session_state.all_study_cards)
+        
+        if current_cards_ids != session_cards_ids:
+            st.session_state.all_study_cards = all_cards.copy()
+            st.session_state.all_current_card_index = 0
+            # 토픽이 변경되어도 보기 상태 유지
+            st.session_state.all_study_show_content = True
+            st.session_state.all_study_show_keyword = True
+            st.session_state.all_study_show_rhyming = True
     
     # 네비게이션 및 컨트롤 버튼
     nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
@@ -3453,7 +3591,7 @@ def all_domains_topic_list():
     </style>
     """, unsafe_allow_html=True)
     
-    # 도메인:토픽 리스트와 카드 개수 표시
+    # 각 도메인:토픽 항목에 학습 모드 버튼 추가
     for idx, item in enumerate(all_domain_topics):
         domain = item["domain"]
         topic = item["topic"]
@@ -3464,22 +3602,42 @@ def all_domains_topic_list():
         expander_label = f"{domain}:{topic} ({card_count}개) - 최종 수정: {modified_time}"
         
         with st.expander(expander_label, expanded=False):
-            # 도메인:토픽 강조 표시를 expander 내부로 이동
-            st.markdown(f"""
-            <div style="margin-bottom: 15px;">
-                <span style="font-size: 18px; font-weight: 600;">
-                    <span style="color: #1E3A8A; background-color: #edf2ff; padding: 3px 8px; border-radius: 4px; margin-right: 5px;">
-                        {domain}
-                    </span>:
-                    <span style="color: #2a4a7f; background-color: #f0f7ff; padding: 3px 8px; border-radius: 4px;">
-                        {topic}
+            # 도메인:토픽 강조 표시와 학습 버튼
+            col1, col2 = st.columns([4, 1])
+            
+            with col1:
+                st.markdown(f"""
+                <div style="margin-bottom: 15px;">
+                    <span style="font-size: 18px; font-weight: 600;">
+                        <span style="color: #1E3A8A; background-color: #edf2ff; padding: 3px 8px; border-radius: 4px; margin-right: 5px;">
+                            {domain}
+                        </span>:
+                        <span style="color: #2a4a7f; background-color: #f0f7ff; padding: 3px 8px; border-radius: 4px;">
+                            {topic}
+                        </span>
+                        <span style="font-size: 14px; color: #4a5568; margin-left: 8px;">
+                            ({card_count}개) - 최종 수정: {modified_time}
+                        </span>
                     </span>
-                    <span style="font-size: 14px; color: #4a5568; margin-left: 8px;">
-                        ({card_count}개) - 최종 수정: {modified_time}
-                    </span>
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                # 이 토픽만 학습하기 버튼
+                if st.button("학습하기", key=f"study_btn_{domain}_{topic}"):
+                    # 세션 상태에 선택한 도메인:토픽 정보 저장
+                    st.session_state.mode = "전체 학습"
+                    st.session_state.study_selected_domain_topic = f"{domain}:{topic}"
+                    
+                    # 학습 세션 상태 초기화
+                    if "all_study_cards" in st.session_state:
+                        del st.session_state.all_study_cards
+                        del st.session_state.all_current_card_index
+                        del st.session_state.all_study_show_content
+                        del st.session_state.all_study_show_keyword
+                        del st.session_state.all_study_show_rhyming
+                    
+                    st.rerun()
             
             # 해당 토픽의 모든 카드 표시
             cards = data[domain][topic]
